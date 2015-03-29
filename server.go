@@ -123,6 +123,7 @@ func (self *Server) Listen() error {
 	self.conn = conn
 	self.running = true
 
+	self.Listening <-nil
 	return nil
 }
 

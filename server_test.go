@@ -78,71 +78,77 @@ func TestServerMessageDispatching(t *testing.T) {
 }
 
 // FIXME
-// func TestServerMessageReceiving(t *testing.T) {
-// 	finish := make(chan bool)
-// 	start := make(chan bool)
-// 	var done sync.WaitGroup
-// 	done.Add(2)
+func TestServerMessageReceiving(t *testing.T) {
+	finish := make(chan bool)
+	start := make(chan bool)
+	var done sync.WaitGroup
+	done.Add(2)
 
-// 	// Start the server in a go-routine
-// 	go func() {
-// 		server := NewServer("localhost", 6677)
-// 		server.Listen()
+	// Start the server in a go-routine
+	go func() {
+		server := NewServer("localhost", 6677)
+		server.Listen()
 
-// 		// Start the client
-// 		start <- true
+		// Start the client
+		start <- true
 
-// 		for {
-// 			packet, err := server.ReceivePacket()
+		err := <-server.Listening
 
-// 			if err != nil {
-// 				t.Fatal(err)
-// 			}
+		if err != nil {
+			t.Fatal(err)
+		}
 
-// 			if packet != nil {
-// 				msg := packet.(*Message)
-// 				if msg.CountArguments() != 2 {
-// 					t.Errorf("Argument length should be 2 and is: %d\n", msg.CountArguments())
-// 				}
+		for {
+			packet, err := server.ReceivePacket()
 
-// 				if msg.Arguments[0].(int32) != 1122 {
-// 					t.Error("Argument should be 1122 and is: " + string(msg.Arguments[0].(int32)))
-// 				}
+			if err != nil {
+				t.Fatal(err)
+			}
 
-// 				if msg.Arguments[1].(int32) != 3344 {
-// 					t.Error("Argument should be 3344 and is: " + string(msg.Arguments[1].(int32)))
-// 				}
+			if packet != nil {
+				msg := packet.(*Message)
+				if msg.CountArguments() != 2 {
+					t.Errorf("Argument length should be 2 and is: %d\n", msg.CountArguments())
+				}
 
-// 				server.Close()
-// 				finish <- true
-// 			}
-// 		}
-// 	}()
+				if msg.Arguments[0].(int32) != 1122 {
+					t.Error("Argument should be 1122 and is: " + string(msg.Arguments[0].(int32)))
+				}
 
-// 	go func() {
-// 		timeout := time.After(5 * time.Second)
-// 		select {
-// 		case <-timeout:
-// 		case <-start:
-// 			client := NewClient("localhost", 6677)
-// 			msg := NewMessage("/address/test")
-// 			msg.Append(int32(1122))
-// 			msg.Append(int32(3344))
-// 			time.Sleep(500 * time.Millisecond)
-// 			client.Send(msg)
-// 		}
+				if msg.Arguments[1].(int32) != 3344 {
+					t.Error("Argument should be 3344 and is: " + string(msg.Arguments[1].(int32)))
+				}
 
-// 		done.Done()
+				server.Close()
+				finish <- true
+			}
+		}
+	}()
 
-// 		select {
-// 		case <-timeout:
-// 		case <-finish:
-// 		}
-// 		done.Done()
-// 	}()
+	go func() {
+		timeout := time.After(5 * time.Second)
+		select {
+		case <-timeout:
+		case <-start:
+			client := NewClient("localhost", 6677)
+			msg := NewMessage("/address/test")
+			msg.Append(int32(1122))
+			msg.Append(int32(3344))
+			time.Sleep(500 * time.Millisecond)
+			client.Send(msg)
+		}
 
-// 	done.Wait()
-// }
+		done.Done()
+
+		select {
+		case <-timeout:
+		case <-finish:
+		}
+		done.Done()
+	}()
+
+	done.Wait()
+}
 
 func TestServerIsNotRunningAndGetsClosed(t *testing.T) {
 	server := NewServer("127.0.0.1", 8000)
