@@ -69,7 +69,7 @@ func (msg *Message) Equals(b *Message) bool {
 			}
 
 		case Timetag:
-			if arg.(*Timetag).TimeTag() != b.Arguments[i].(*Timetag).TimeTag() {
+			if arg.(Timetag) != b.Arguments[i].(Timetag) {
 				return false
 			}
 		}
@@ -225,7 +225,7 @@ func (msg *Message) ToByteArray() (buffer []byte, err error) {
 // NewBundle returns an OSC Bundle. Use this function to create a new OSC
 // Bundle.
 func NewBundle(time time.Time) (bundle *Bundle) {
-	return &Bundle{Timetag: *NewTimetag(time)}
+	return &Bundle{Timetag: NewTimetag(time)}
 }
 
 // Append appends an OSC bundle or OSC message to the bundle.
@@ -338,7 +338,7 @@ func PrintMessage(msg *Message) {
 		case Timetag:
 			formatString += " %d"
 			timeTag := arg.(Timetag)
-			arguments = append(arguments, timeTag.TimeTag())
+			arguments = append(arguments, uint64(timeTag))
 		}
 	}
 	fmt.Println(fmt.Sprintf(formatString, arguments...))

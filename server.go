@@ -352,7 +352,7 @@ func (self *Server) readArguments(msg *Message, reader *bufio.Reader, start *int
 				return nil
 			}
 			*start += 8
-			msg.Append(NewTimetagFromTimetag(tt))
+			msg.Append(Timetag(tt))
 
 		// True
 		case 'T':
@@ -365,4 +365,33 @@ func (self *Server) readArguments(msg *Message, reader *bufio.Reader, start *int
 	}
 
 	return nil
+}
+
+// readBlob reads an OSC Blob from the blob byte array. Padding bytes are removed
+// from the reader and not returned.
+func readBlob(reader *bufio.Reader) (blob []byte, n int, err error) {
+	// First, get the length
+	var blobLen int
+	if err = binary.Read(reader, binary.BigEndian, &blobLen); err != nil {
+		return nil, 0, err
+	}
+	n = 4 + blobLen
+
+	// Read the data
+	blob = make([]byte, blobLen)
+	if _, err = reader.Read(blob); err != nil {
+		return nil, 0, err
+	}
+
+	// Remove the padding bytes
+	numPadBytes := padBytesNeeded(blobLen)
+	if numPadBytes > 0 {
+		n += numPadBytes
+		dummy := make([]byte, numPadBytes)
+		if _, err = reader.Read(dummy); err != nil {
+			return nil, 0, err
+		}
+	}
+
+	return blob, n, nil
 }
