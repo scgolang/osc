@@ -10,11 +10,10 @@ import (
 	"time"
 )
 
-// An OSC server. The server listens on Address and Port for incoming OSC packets
-// and bundles.
+// Server
+// An OSC server. The server listens at Address for incoming OSC packets and bundles.
 type Server struct {
 	Address     string         // Address to listen on
-	Port        int            // Port to listen on
 	ReadTimeout time.Duration  // Read Timeout
 	dispatcher  *OscDispatcher // Dispatcher that dispatches OSC packets/messages
 	running     bool           // Flag to store if the server is running or not
@@ -23,10 +22,9 @@ type Server struct {
 }
 
 // NewServer returns a new Server.
-func NewServer(address string, port int) (server *Server) {
+func NewServer(address string) (server *Server) {
 	return &Server{
 		Address:     address,
-		Port:        port,
 		dispatcher:  NewOscDispatcher(),
 		ReadTimeout: 0,
 		running:     false,
@@ -63,8 +61,7 @@ func (self *Server) ListenAndDispatch() error {
 		return err
 	}
 
-	service := fmt.Sprintf("%s:%d", self.Address, self.Port)
-	udpAddr, err := net.ResolveUDPAddr("udp", service)
+	udpAddr, err := net.ResolveUDPAddr("udp", self.Address)
 	if err != nil {
 		self.Listening <- err
 		return err
@@ -104,8 +101,7 @@ func (self *Server) Listen() error {
 		return errors.New("Server is already running")
 	}
 
-	service := fmt.Sprintf("%s:%d", self.Address, self.Port)
-	udpAddr, err := net.ResolveUDPAddr("udp", service)
+	udpAddr, err := net.ResolveUDPAddr("udp", self.Address)
 	if err != nil {
 		return err
 	}
@@ -123,7 +119,7 @@ func (self *Server) Listen() error {
 	self.conn = conn
 	self.running = true
 
-	self.Listening <-nil
+	self.Listening <- nil
 	return nil
 }
 

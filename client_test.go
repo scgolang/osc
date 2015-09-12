@@ -6,8 +6,8 @@ import (
 )
 
 func TestClientSetLocalAddr(t *testing.T) {
-	client := NewClient("localhost", 8967)
-	err := client.SetLocalAddr("localhost", 41789)
+	client := NewClient("localhost:8967")
+	err := client.SetLocalAddr("localhost:41789")
 	if err != nil {
 		t.Error(err.Error())
 	}
@@ -18,14 +18,14 @@ func TestClientSetLocalAddr(t *testing.T) {
 }
 
 func ExampleClient() {
-	addr, port := "127.0.0.1", 8765
-	server := NewServer(addr, port)
+	addr := "127.0.0.1:8765"
+	server := NewServer(addr)
 
 	done := make(chan error)
 
 	server.AddMsgHandler("/osc/address", func(msg *Message) {
 		PrintMessage(msg)
-		done <-nil
+		done <- nil
 	})
 
 	go server.ListenAndDispatch()
@@ -36,7 +36,7 @@ func ExampleClient() {
 		log.Fatal(err)
 	}
 
-	client := NewClient(addr, port)
+	client := NewClient(addr)
 	msg := NewMessage("/osc/address")
 	msg.Append(int32(111))
 	msg.Append(true)
