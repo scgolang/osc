@@ -35,8 +35,8 @@ func NewMessage(address string) (msg *Message) {
 }
 
 // Append appends the given argument to the arguments list.
-func (msg *Message) Append(argument interface{}) {
-	msg.Arguments = append(msg.Arguments, argument)
+func (msg *Message) Append(arguments ...interface{}) {
+	msg.Arguments = append(msg.Arguments, arguments...)
 }
 
 // Equals determines if the given OSC Message b is equal to the current OSC Message.
