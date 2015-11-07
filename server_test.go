@@ -34,12 +34,12 @@ func TestServerMessageDispatching(t *testing.T) {
 	defer func() { _ = server.Close() }() // Best effort.
 
 	if err := server.AddMsgHandler("/address/test", func(msg *Message) {
-		if len(msg.Arguments) != 1 {
-			t.Error("Argument length should be 1 and is: " + string(len(msg.Arguments)))
+		if len(msg.arguments) != 1 {
+			t.Error("Argument length should be 1 and is: " + string(len(msg.arguments)))
 		}
 
-		if msg.Arguments[0].(int32) != 1122 {
-			t.Error("Argument should be 1122 and is: " + string(msg.Arguments[0].(int32)))
+		if msg.arguments[0].(int32) != 1122 {
+			t.Error("Argument should be 1122 and is: " + string(msg.arguments[0].(int32)))
 		}
 	}); err != nil {
 		t.Error("Error adding message handler")

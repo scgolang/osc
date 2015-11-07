@@ -5,7 +5,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"time"
+	"io"
+	"net"
 )
 
 // Packet is the interface for Message and Bundle.
@@ -16,35 +17,26 @@ type Packet interface {
 // Represents a single OSC message. An OSC message consists of an OSC address
 // pattern and zero or more arguments.
 type Message struct {
-	Address   string
-	Arguments []interface{}
+	address   string
+	arguments []interface{}
+	sender    net.Addr
 }
 
-// An OSC Bundle consists of the OSC-string "#bundle" followed by an OSC Time Tag,
-// followed by zero or more OSC bundle/message elements. The OSC-timetag is a 64-bit fixed
-// point time tag. See http://opensoundcontrol.org/spec-1_0 for more information.
-type Bundle struct {
-	Timetag  Timetag
-	Messages []*Message
-	Bundles  []*Bundle
+// NewMessage creates a new OSC message.
+func NewMessage(addr string) *Message {
+	return &Message{address: addr}
 }
 
-// NewMessage returns a new Message. The address parameter is the OSC address.
-func NewMessage(address string) (msg *Message) {
-	return &Message{Address: address}
-}
-
-// Append appends the given argument to the arguments list.
-func (msg *Message) Append(arguments ...interface{}) {
-	msg.Arguments = append(msg.Arguments, arguments...)
+// Sender returns the address from which a message was sent.
+func (msg *Message) Sender() net.Addr {
+	return msg.sender
 }
 
 // Equals determines if the given OSC Message b is equal to the current OSC Message.
-// It checks if the OSC address and the arguments are equal. Returns, true if the
-// current object and b are equal.
+// It checks if the OSC address and the arguments are equal.
 func (msg *Message) Equals(b *Message) bool {
 	// Check OSC address
-	if msg.Address != b.Address {
+	if msg.address != b.address {
 		return false
 	}
 
@@ -54,22 +46,22 @@ func (msg *Message) Equals(b *Message) bool {
 	}
 
 	// Check arguments
-	for i, arg := range msg.Arguments {
+	for i, arg := range msg.arguments {
 		switch arg.(type) {
 		case bool, int32, int64, float32, float64, string:
-			if arg != b.Arguments[i] {
+			if arg != b.arguments[i] {
 				return false
 			}
 
 		case []byte:
 			ba := arg.([]byte)
-			bb := b.Arguments[i].([]byte)
+			bb := b.arguments[i].([]byte)
 			if !bytes.Equal(ba, bb) {
 				return false
 			}
 
 		case Timetag:
-			if arg.(Timetag) != b.Arguments[i].(Timetag) {
+			if arg.(Timetag) != b.arguments[i].(Timetag) {
 				return false
 			}
 		}
@@ -78,21 +70,25 @@ func (msg *Message) Equals(b *Message) bool {
 	return true
 }
 
+// Append appends the given argument to the arguments list.
+func (msg *Message) Append(arguments ...interface{}) {
+	msg.arguments = append(msg.arguments, arguments...)
+}
+
 // Clear clears the OSC address and all arguments.
 func (msg *Message) Clear() {
-	msg.Address = ""
 	msg.ClearData()
 }
 
 // ClearData removes all arguments from the OSC Message.
 func (msg *Message) ClearData() {
-	msg.Arguments = msg.Arguments[len(msg.Arguments):]
+	msg.arguments = msg.arguments[len(msg.arguments):]
 }
 
 // Returns true, if the address of the OSC Message matches the given address.
 // Case sensitive!
 func (msg *Message) Match(address string) bool {
-	exp := getRegEx(msg.Address)
+	exp := getRegEx(msg.address)
 
 	if exp.MatchString(address) {
 		return true
@@ -104,7 +100,7 @@ func (msg *Message) Match(address string) bool {
 // TypeTags returns the type tag string.
 func (msg *Message) TypeTags() (tags string, err error) {
 	tags = ","
-	for _, m := range msg.Arguments {
+	for _, m := range msg.arguments {
 		s, err := getTypeTag(m)
 		if err != nil {
 			return "", err
@@ -117,20 +113,20 @@ func (msg *Message) TypeTags() (tags string, err error) {
 
 // CountArguments returns the number of arguments.
 func (msg *Message) CountArguments() int {
-	return len(msg.Arguments)
+	return len(msg.arguments)
 }
 
-// ToByteBuffer serializes the OSC message to a byte buffer. The byte buffer
-// is of the following format:
+// ToByteArray serializes the OSC message to a byte buffer.
+// The byte buffer is of the following format:
 // 1. OSC Address Pattern
 // 2. OSC Type Tag String
 // 3. OSC Arguments
 func (msg *Message) ToByteArray() (buffer []byte, err error) {
 	// The byte buffer for the message
-	var data = new(bytes.Buffer)
+	var data = &bytes.Buffer{}
 
 	// We can start with the OSC address and add it to the buffer
-	_, err = writePaddedString(msg.Address, data)
+	_, err = writePaddedString(msg.address, data)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +136,7 @@ func (msg *Message) ToByteArray() (buffer []byte, err error) {
 
 	// Process the type tags and collect all arguments
 	var payload = new(bytes.Buffer)
-	for _, arg := range msg.Arguments {
+	for _, arg := range msg.arguments {
 		// FIXME: Use t instead of arg
 		switch t := arg.(type) {
 		default:
@@ -218,110 +214,20 @@ func (msg *Message) ToByteArray() (buffer []byte, err error) {
 	return data.Bytes(), nil
 }
 
-////
-// Bundle
-////
-
-// NewBundle returns an OSC Bundle. Use this function to create a new OSC
-// Bundle.
-func NewBundle(time time.Time) (bundle *Bundle) {
-	return &Bundle{Timetag: NewTimetag(time)}
-}
-
-// Append appends an OSC bundle or OSC message to the bundle.
-func (self *Bundle) Append(pkt Packet) (err error) {
-	switch t := pkt.(type) {
-	default:
-		return errors.New(fmt.Sprintf("Unsupported OSC packet type: only Bundle and Message are supported.", t))
-
-	case *Bundle:
-		self.Bundles = append(self.Bundles, t)
-
-	case *Message:
-		self.Messages = append(self.Messages, t)
-	}
-
-	return nil
-}
-
-// ToByteArray serializes the OSC bundle to a byte array with the following format:
-// 1. Bundle string: '#bundle'
-// 2. OSC timetag
-// 3. Length of first OSC bundle element
-// 4. First bundle element
-// 5. Length of n OSC bundle element
-// 6. n bundle element
-func (self *Bundle) ToByteArray() (buffer []byte, err error) {
-	var data = new(bytes.Buffer)
-
-	// Add the '#bundle' string
-	_, err = writePaddedString("#bundle", data)
-	if err != nil {
-		return nil, err
-	}
-
-	// Add the timetag
-	if _, err = data.Write(self.Timetag.ToByteArray()); err != nil {
-		return nil, err
-	}
-
-	// Process all OSC Messages
-	for _, m := range self.Messages {
-		var msgLen int
-		var msgBuf []byte
-
-		msgBuf, err = m.ToByteArray()
-		if err != nil {
-			return nil, err
-		}
-
-		// Append the length of the OSC message
-		msgLen = len(msgBuf)
-		if err = binary.Write(data, binary.BigEndian, int32(msgLen)); err != nil {
-			return nil, err
-		}
-
-		// Append the OSC message
-		data.Write(msgBuf)
-	}
-
-	// Process all OSC Bundles
-	for _, b := range self.Bundles {
-		var bLen int
-		var bBuf []byte
-
-		bBuf, err = b.ToByteArray()
-		if err != nil {
-			return nil, err
-		}
-
-		// Write the size of the bundle
-		bLen = len(bBuf)
-		if err = binary.Write(data, binary.BigEndian, int32(bLen)); err != nil {
-			return nil, err
-		}
-
-		// Append the bundle
-		data.Write(bBuf)
-	}
-
-	return data.Bytes(), nil
-}
-
-// PrintMessages pretty prints an Message to the standard output.
-func PrintMessage(msg *Message) {
+// Write pretty prints a Message to the standard output.
+func (msg *Message) Write(w io.Writer) error {
 	tags, err := msg.TypeTags()
 	if err != nil {
-		return
+		return err
 	}
 
 	var formatString string
 	var arguments []interface{}
 	formatString += "%s %s"
-	arguments = append(arguments, msg.Address)
+	arguments = append(arguments, msg.address)
 	arguments = append(arguments, tags)
 
-	for _, arg := range msg.Arguments {
+	for _, arg := range msg.arguments {
 		switch arg.(type) {
 		case bool, int32, int64, float32, float64, string:
 			formatString += " %v"
@@ -341,5 +247,6 @@ func PrintMessage(msg *Message) {
 			arguments = append(arguments, uint64(timeTag))
 		}
 	}
-	fmt.Println(fmt.Sprintf(formatString, arguments...))
+	fmt.Fprintln(w, fmt.Sprintf(formatString, arguments...))
+	return nil
 }

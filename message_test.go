@@ -7,10 +7,12 @@ import (
 )
 
 func TestAppendArguments(t *testing.T) {
-	oscAddress := "/address"
-	message := NewMessage(oscAddress)
-	if message.Address != oscAddress {
-		t.Errorf("OSC address should be \"%s\" and is \"%s\"", oscAddress, message.Address)
+	var (
+		oscAddress = "/address"
+		message    = NewMessage(oscAddress)
+	)
+	if message.address != oscAddress {
+		t.Errorf("OSC address should be \"%s\" and is \"%s\"", oscAddress, message.address)
 	}
 
 	message.Append("string argument")
@@ -23,8 +25,10 @@ func TestAppendArguments(t *testing.T) {
 }
 
 func TestEqualMessage(t *testing.T) {
-	msg1 := NewMessage("/address")
-	msg2 := NewMessage("/address")
+	var (
+		msg1 = NewMessage("/address")
+		msg2 = NewMessage("/address")
+	)
 
 	msg1.Append(1234)
 	msg2.Append(1234)

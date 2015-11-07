@@ -2,6 +2,7 @@ package osc
 
 import (
 	"log"
+	"os"
 	"testing"
 )
 
@@ -25,22 +26,19 @@ func ExampleClient() {
 	}
 	defer func() { _ = server.Close() }() // Best effort.
 
-	done := make(chan error)
+	errChan := make(chan error)
 
 	if err := server.AddMsgHandler("/osc/address", func(msg *Message) {
-		PrintMessage(msg)
-		done <- nil
+		errChan <- msg.Write(os.Stdout)
 	}); err != nil {
 		log.Fatal(err)
 	}
 
 	go func() {
-		done <- server.ListenAndDispatch()
+		errChan <- server.ListenAndDispatch()
 	}()
 
-	if err := <-server.Listening; err != nil {
-		log.Fatal(err)
-	}
+	_ = <-server.Listening
 
 	var (
 		client = NewClient(addr)
@@ -51,7 +49,7 @@ func ExampleClient() {
 	msg.Append("hello")
 	client.Send(msg)
 
-	if err := <-done; err != nil {
+	if err := <-errChan; err != nil {
 		log.Fatal(err)
 	}
 	// Output:

@@ -18,7 +18,7 @@ const (
 	// least signifigant bit is a special case meaning "immediately."
 	timeTagImmediate      = uint64(1)
 	secondsFrom1900To1970 = 2208988800
-	BUNDLE_TAG            = "#bundle"
+	BundleTag             = "#bundle"
 )
 
 // OSC message handler interface. Every handler function for an OSC message must

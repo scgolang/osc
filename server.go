@@ -10,26 +10,40 @@ import (
 	"time"
 )
 
-// Server
-// An OSC server. The server listens at Address for incoming OSC packets and bundles.
+// Server is an OSC server.
 type Server struct {
-	Address     string         // Address to listen on
-	ReadTimeout time.Duration  // Read Timeout
-	dispatcher  *OscDispatcher // Dispatcher that dispatches OSC packets/messages
-	running     bool           // Flag to store if the server is running or not
-	Listening   chan error     // channel used to indicate when the server is running
-	conn        *net.UDPConn   // UDP connection object
+	Address     string         // Address is the listening address.
+	Listening   chan struct{}  // Listening is a channel used to indicate when the server is running.
+	readTimeout time.Duration  // readTimeout is the timeout for reading from a connection.
+	dispatcher  *OscDispatcher // Dispatcher that dispatches OSC packets/messages.
+	running     bool           // Flag to store if the server is running or not.
+	conn        *net.UDPConn   // conn is a UDP connection object.
 }
 
-// NewServer returns a new Server.
-func NewServer(address string) (*Server, error) {
+// NewServer returns a new OSC Server.
+func NewServer(addr string) (*Server, error) {
 	return &Server{
-		Address:     address,
+		Address:     addr,
+		Listening:   make(chan struct{}),
+		readTimeout: 0,
 		dispatcher:  NewOscDispatcher(),
-		ReadTimeout: 0,
-		running:     false,
-		Listening:   make(chan error),
 	}, nil
+}
+
+func (self *Server) connect() error {
+	addr, err := net.ResolveUDPAddr("udp", self.Address)
+	if err != nil {
+		return err
+	}
+
+	conn, err := net.ListenUDP("udp", addr)
+	if err != nil {
+		return err
+	}
+
+	self.conn = conn
+
+	return nil
 }
 
 // Close stops the OSC server and closes the connection.
@@ -51,46 +65,34 @@ func (self *Server) AddMsgHandler(address string, handler HandlerFunc) error {
 func (self *Server) ListenAndDispatch() error {
 	if self.running {
 		err := errors.New("Server is already running")
-		self.Listening <- err
 		return err
 	}
 
 	if self.dispatcher == nil {
 		err := errors.New("No dispatcher definied")
-		self.Listening <- err
 		return err
 	}
 
-	udpAddr, err := net.ResolveUDPAddr("udp", self.Address)
-	if err != nil {
-		self.Listening <- err
-		return err
-	}
-
-	self.conn, err = net.ListenUDP("udp", udpAddr)
-	if err != nil {
-		self.Listening <- err
+	if err := self.connect(); err != nil {
 		return err
 	}
 
 	// Set read timeout
-	if self.ReadTimeout != 0 {
-		err = self.conn.SetReadDeadline(time.Now().Add(self.ReadTimeout))
-		if err != nil {
-			self.Listening <- err
+	if self.readTimeout != 0 {
+		if err := self.conn.SetReadDeadline(time.Now().Add(self.readTimeout)); err != nil {
 			return err
 		}
 	}
 
 	self.running = true
-
-	self.Listening <- nil
+	self.Listening <- struct{}{}
 
 	for self.running {
 		msg, err := self.readFromConnection()
-		if err == nil {
-			go self.dispatcher.Dispatch(msg)
+		if err != nil {
+			return err
 		}
+		self.dispatcher.Dispatch(msg)
 	}
 
 	return nil
@@ -98,29 +100,24 @@ func (self *Server) ListenAndDispatch() error {
 
 // Listen causes the server to start listening for packets.
 func (self *Server) Listen() error {
+	if self.conn == nil {
+		if err := self.connect(); err != nil {
+			return err
+		}
+	}
+
 	if self.running {
 		return errors.New("Server is already running")
 	}
 
-	udpAddr, err := net.ResolveUDPAddr("udp", self.Address)
-	if err != nil {
-		return err
-	}
-
-	conn, err := net.ListenUDP("udp", udpAddr)
-	if err != nil {
-		return err
-	}
-
 	// Set read timeout
-	if self.ReadTimeout != 0 {
-		conn.SetReadDeadline(time.Now().Add(self.ReadTimeout))
+	if self.readTimeout != 0 {
+		self.conn.SetReadDeadline(time.Now().Add(self.readTimeout))
 	}
 
-	self.conn = conn
 	self.running = true
+	self.Listening <- struct{}{}
 
-	self.Listening <- nil
 	return nil
 }
 
@@ -207,7 +204,7 @@ func (self *Server) readBundle(reader *bufio.Reader, start *int, end int) (bundl
 	}
 	*start += n
 
-	if startTag != BUNDLE_TAG {
+	if startTag != BundleTag {
 		return nil, errors.New(fmt.Sprintf("Invalid bundle start tag: %s", startTag))
 	}
 
@@ -253,7 +250,7 @@ func (self *Server) readMessage(reader *bufio.Reader, start *int) (msg *Message,
 	*start += n
 
 	// Create a new message
-	msg = NewMessage(address)
+	msg = &Message{address: address}
 
 	// Read all arguments
 	if err = self.readArguments(msg, reader, start); err != nil {
