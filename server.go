@@ -74,8 +74,8 @@ func (self *Server) AddMsgHandler(address string, handler HandlerFunc) error {
 	return self.dispatcher.AddMsgHandler(address, handler)
 }
 
-// ListenAndServe retrieves incoming OSC packets and dispatches the retrieved OSC packets.
-func (self *Server) ListenAndDispatch() error {
+// Listen retrieves incoming OSC packets and dispatches the retrieved OSC packets.
+func (self *Server) Listen() error {
 	if self.running {
 		return ErrAlreadyRunning
 	}
@@ -105,29 +105,6 @@ func (self *Server) ListenAndDispatch() error {
 		}
 		self.dispatcher.Dispatch(msg)
 	}
-
-	return nil
-}
-
-// Listen causes the server to start listening for packets.
-func (self *Server) Listen() error {
-	if self.conn == nil {
-		if err := self.connect(); err != nil {
-			return err
-		}
-	}
-
-	if self.running {
-		return ErrAlreadyRunning
-	}
-
-	// Set read timeout
-	if self.readTimeout != 0 {
-		self.conn.SetReadDeadline(time.Now().Add(self.readTimeout))
-	}
-
-	self.running = true
-	self.Listening <- struct{}{}
 
 	return nil
 }

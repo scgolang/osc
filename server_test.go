@@ -49,7 +49,7 @@ func TestServerMessageDispatching(t *testing.T) {
 
 	// Start the OSC server in a new go-routine
 	go func() {
-		errChan <- server.ListenAndDispatch()
+		errChan <- server.Listen()
 	}()
 
 	select {

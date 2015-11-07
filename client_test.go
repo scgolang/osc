@@ -35,7 +35,7 @@ func ExampleClient() {
 	}
 
 	go func() {
-		errChan <- server.ListenAndDispatch()
+		errChan <- server.Listen()
 	}()
 
 	_ = <-server.Listening
