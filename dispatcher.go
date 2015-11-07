@@ -7,12 +7,6 @@ import (
 	"time"
 )
 
-// Interface for an OSC message dispatcher. A dispatcher is responsible for
-// dispatching received OSC messages.
-type Dispatcher interface {
-	Dispatch(packet Packet)
-}
-
 // Dispatcher for OSC packets.
 type OscDispatcher struct {
 	handlers map[string]Handler
