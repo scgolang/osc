@@ -22,13 +22,14 @@ type Server struct {
 }
 
 // NewServer returns a new Server.
-func NewServer(address string) (server *Server) {
+func NewServer(address string) (*Server, error) {
 	return &Server{
 		Address:     address,
 		dispatcher:  NewOscDispatcher(),
 		ReadTimeout: 0,
 		running:     false,
-		Listening:   make(chan error)}
+		Listening:   make(chan error),
+	}, nil
 }
 
 // Close stops the OSC server and closes the connection.
@@ -46,8 +47,7 @@ func (self *Server) AddMsgHandler(address string, handler HandlerFunc) error {
 	return self.dispatcher.AddMsgHandler(address, handler)
 }
 
-// ListenAndServe retrieves incoming OSC packets and dispatches the retrieved
-// OSC packets.
+// ListenAndServe retrieves incoming OSC packets and dispatches the retrieved OSC packets.
 func (self *Server) ListenAndDispatch() error {
 	if self.running {
 		err := errors.New("Server is already running")
@@ -96,6 +96,7 @@ func (self *Server) ListenAndDispatch() error {
 	return nil
 }
 
+// Listen causes the server to start listening for packets.
 func (self *Server) Listen() error {
 	if self.running {
 		return errors.New("Server is already running")

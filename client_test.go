@@ -7,45 +7,51 @@ import (
 
 func TestClientSetLocalAddr(t *testing.T) {
 	client := NewClient("localhost:8967")
-	err := client.SetLocalAddr("localhost:41789")
-	if err != nil {
+	if err := client.SetLocalAddr("localhost:41789"); err != nil {
 		t.Error(err.Error())
 	}
-	expectedAddr := "127.0.0.1:41789"
-	if client.laddr.String() != expectedAddr {
-		t.Errorf("Expected laddr to be %s but was %s", expectedAddr, client.laddr.String())
+
+	if expected, got := "127.0.0.1:41789", client.laddr.String(); expected != got {
+		t.Errorf("Expected laddr to be %s but got %s", expected, got)
 	}
 }
 
 func ExampleClient() {
-	addr := "127.0.0.1:8765"
-	server := NewServer(addr)
+	const addr = "127.0.0.1:8765"
 
-	done := make(chan error)
-
-	server.AddMsgHandler("/osc/address", func(msg *Message) {
-		PrintMessage(msg)
-		done <- nil
-	})
-
-	go server.ListenAndDispatch()
-
-	err := <-server.Listening
-
+	server, err := NewServer(addr)
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer func() { _ = server.Close() }() // Best effort.
 
-	client := NewClient(addr)
-	msg := NewMessage("/osc/address")
+	done := make(chan error)
+
+	if err := server.AddMsgHandler("/osc/address", func(msg *Message) {
+		PrintMessage(msg)
+		done <- nil
+	}); err != nil {
+		log.Fatal(err)
+	}
+
+	go func() {
+		done <- server.ListenAndDispatch()
+	}()
+
+	if err := <-server.Listening; err != nil {
+		log.Fatal(err)
+	}
+
+	var (
+		client = NewClient(addr)
+		msg    = NewMessage("/osc/address")
+	)
 	msg.Append(int32(111))
 	msg.Append(true)
 	msg.Append("hello")
 	client.Send(msg)
 
-	err = <-done
-
-	if err != nil {
+	if err := <-done; err != nil {
 		log.Fatal(err)
 	}
 	// Output:
