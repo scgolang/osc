@@ -36,6 +36,11 @@ func (f HandlerFunc) HandleMessage(msg *Message) {
 	f(msg)
 }
 
+// Packet is the interface for Message and Bundle.
+type Packet interface {
+	ToByteArray() ([]byte, error)
+}
+
 // writeBlob writes the data byte array as an OSC blob into buff. If the length of
 // data isn't 32-bit aligned, padding bytes will be added.
 func writeBlob(data []byte, buff *bytes.Buffer) (numberOfBytes int, err error) {

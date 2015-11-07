@@ -9,11 +9,6 @@ import (
 	"net"
 )
 
-// Packet is the interface for Message and Bundle.
-type Packet interface {
-	ToByteArray() (buffer []byte, err error)
-}
-
 // Represents a single OSC message. An OSC message consists of an OSC address
 // pattern and zero or more arguments.
 type Message struct {
