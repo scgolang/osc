@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync/atomic"
 	"time"
+	"unsafe"
 )
 
 // Common errors.
@@ -38,6 +40,7 @@ func NewServer(addr string) (*Server, error) {
 	}, nil
 }
 
+// connect initializes the server's connection.
 func (self *Server) connect() error {
 	addr, err := net.ResolveUDPAddr("udp", self.Address)
 	if err != nil {
@@ -49,17 +52,19 @@ func (self *Server) connect() error {
 		return err
 	}
 
-	self.conn = conn
+	dest := (*unsafe.Pointer)(unsafe.Pointer(&self.conn))
+	if !atomic.CompareAndSwapPointer(dest, unsafe.Pointer(self.conn), unsafe.Pointer(conn)) {
+		return errors.New("could not initialize connection")
+	}
 
 	return nil
 }
 
 // Close stops the OSC server and closes the connection.
 func (self *Server) Close() error {
-	if !self.running {
-		return ErrPrematureClose
+	if self.conn == nil {
+		return nil
 	}
-	self.running = false
 	return self.conn.Close()
 }
 

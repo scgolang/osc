@@ -64,14 +64,3 @@ func TestServerMessageDispatching(t *testing.T) {
 		client.Send(msg)
 	}
 }
-
-func TestServerIsNotRunningAndGetsClosed(t *testing.T) {
-	server, err := NewServer("127.0.0.1:8000")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := server.Close(); err == nil {
-		t.Errorf("Expected error if the the server is not running and it gets closed")
-	}
-}
