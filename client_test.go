@@ -18,21 +18,17 @@ func TestClientSetLocalAddr(t *testing.T) {
 }
 
 func ExampleClient() {
-	const addr = "127.0.0.1:8765"
+	errChan := make(chan error)
 
-	server, err := NewServer(addr)
+	server, err := NewServer("127.0.0.1:0", map[string]HandlerFunc{
+		"/osc/address": func(msg *Message) {
+			errChan <- msg.Write(os.Stdout)
+		},
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer func() { _ = server.Close() }() // Best effort.
-
-	errChan := make(chan error)
-
-	if err := server.AddMsgHandler("/osc/address", func(msg *Message) {
-		errChan <- msg.Write(os.Stdout)
-	}); err != nil {
-		log.Fatal(err)
-	}
 
 	go func() {
 		errChan <- server.Listen()
@@ -41,7 +37,7 @@ func ExampleClient() {
 	_ = <-server.Listening
 
 	var (
-		client = NewClient(addr)
+		client = NewClient(server.LocalAddr().String())
 		msg    = NewMessage("/osc/address")
 	)
 	msg.Append(int32(111))

@@ -2,48 +2,37 @@ package osc
 
 import "testing"
 
-func TestAddMsgHandler(t *testing.T) {
-	server, err := NewServer("localhost:6677")
-	if err != nil {
-		t.Fatal(err)
+func TestInvalidAddress(t *testing.T) {
+	handlers := map[string]HandlerFunc{
+		"/address*/test": func(msg *Message) {},
 	}
-	defer func() { _ = server.Close() }() // Best effort.
-
-	if err := server.AddMsgHandler("/address/test", func(msg *Message) {}); err != nil {
-		t.Error("Expected that OSC address '/address/test' is valid")
+	server, err := NewServer("", handlers)
+	if err != ErrInvalidAddress {
+		t.Fatal("expected invalid address error")
 	}
-}
-
-func TestAddMsgHandlerWithInvalidAddress(t *testing.T) {
-	server, err := NewServer("localhost:6677")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = server.Close() }() // Best effort.
-
-	if err := server.AddMsgHandler("/address*/test", func(msg *Message) {}); err == nil {
-		t.Error("Expected error with '/address*/test'")
+	if server != nil {
+		_ = server.Close()
 	}
 }
 
-func TestServerMessageDispatching(t *testing.T) {
-	server, err := NewServer("localhost:6677")
+func TestMessageDispatching(t *testing.T) {
+	handlers := map[string]HandlerFunc{
+		"/address/test": func(msg *Message) {
+			if len(msg.arguments) != 1 {
+				t.Error("Argument length should be 1 and is: " + string(len(msg.arguments)))
+			}
+
+			if msg.arguments[0].(int32) != 1122 {
+				t.Error("Argument should be 1122 and is: " + string(msg.arguments[0].(int32)))
+			}
+		},
+	}
+
+	server, err := NewServer("127.0.0.1:0", handlers)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = server.Close() }() // Best effort.
-
-	if err := server.AddMsgHandler("/address/test", func(msg *Message) {
-		if len(msg.arguments) != 1 {
-			t.Error("Argument length should be 1 and is: " + string(len(msg.arguments)))
-		}
-
-		if msg.arguments[0].(int32) != 1122 {
-			t.Error("Argument should be 1122 and is: " + string(msg.arguments[0].(int32)))
-		}
-	}); err != nil {
-		t.Error("Error adding message handler")
-	}
 
 	errChan := make(chan error)
 
@@ -66,7 +55,7 @@ func TestServerMessageDispatching(t *testing.T) {
 }
 
 func TestServerCloseBeforeListen(t *testing.T) {
-	server, err := NewServer("localhost:0")
+	server, err := NewServer("", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

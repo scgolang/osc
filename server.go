@@ -7,9 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"sync/atomic"
-	"time"
-	"unsafe"
+	"strings"
 )
 
 // Common errors.
@@ -21,41 +19,39 @@ var (
 
 // Server is an OSC server.
 type Server struct {
-	Address     string         // Address is the listening address.
-	Listening   chan struct{}  // Listening is a channel used to indicate when the server is running.
-	readTimeout time.Duration  // readTimeout is the timeout for reading from a connection.
-	dispatcher  *OscDispatcher // Dispatcher that dispatches OSC packets/messages.
-	conn        *net.UDPConn   // conn is a UDP connection object.
+	Listening  chan struct{} // Listening is a channel used to indicate when the server is running.
+	dispatcher oscDispatcher // Dispatcher that dispatches OSC packets/messages.
+	conn       *net.UDPConn  // conn is a UDP connection object.
 }
 
 // NewServer returns a new OSC Server.
-func NewServer(addr string) (*Server, error) {
+func NewServer(addr string, handlers map[string]HandlerFunc) (*Server, error) {
+	for addr, _ := range handlers {
+		if err := validateAddress(addr); err != nil {
+			return nil, err
+		}
+	}
+
+	netAddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := net.ListenUDP("udp", netAddr)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Server{
-		Address:     addr,
-		Listening:   make(chan struct{}),
-		readTimeout: 0,
-		dispatcher:  NewOscDispatcher(),
+		Listening:  make(chan struct{}),
+		dispatcher: oscDispatcher(handlers),
+		conn:       conn,
 	}, nil
 }
 
-// connect initializes the server's connection.
-func (self *Server) connect() error {
-	addr, err := net.ResolveUDPAddr("udp", self.Address)
-	if err != nil {
-		return err
-	}
-
-	conn, err := net.ListenUDP("udp", addr)
-	if err != nil {
-		return err
-	}
-
-	dest := (*unsafe.Pointer)(unsafe.Pointer(&self.conn))
-	if !atomic.CompareAndSwapPointer(dest, unsafe.Pointer(self.conn), unsafe.Pointer(conn)) {
-		return errors.New("could not initialize connection")
-	}
-
-	return nil
+// LocalAddr returns the local network address.
+func (self *Server) LocalAddr() net.Addr {
+	return self.conn.LocalAddr()
 }
 
 // Close stops the OSC server and closes the connection.
@@ -66,27 +62,10 @@ func (self *Server) Close() error {
 	return self.conn.Close()
 }
 
-// AddMsgHandler registers a new message handler function for an OSC address. The handler
-// is the function called for incoming Messages that match 'address'.
-func (self *Server) AddMsgHandler(address string, handler HandlerFunc) error {
-	return self.dispatcher.AddMsgHandler(address, handler)
-}
-
 // Listen retrieves incoming OSC packets and dispatches the retrieved OSC packets.
 func (self *Server) Listen() error {
 	if self.dispatcher == nil {
 		return ErrNoDispatcher
-	}
-
-	if err := self.connect(); err != nil {
-		return err
-	}
-
-	// Set read timeout
-	if self.readTimeout != 0 {
-		if err := self.conn.SetReadDeadline(time.Now().Add(self.readTimeout)); err != nil {
-			return err
-		}
 	}
 
 	self.Listening <- struct{}{}
@@ -95,16 +74,13 @@ func (self *Server) Listen() error {
 	if err != nil {
 		return err
 	}
-	self.dispatcher.Dispatch(msg)
+	self.dispatcher.dispatch(msg)
 
 	return nil
 }
 
 // Send sends an OSC Bundle or an OSC Message.
 func (self *Server) SendTo(addr net.Addr, packet Packet) (err error) {
-	if self.conn == nil {
-		return fmt.Errorf("connection not initialized")
-	}
 	data, err := packet.ToByteArray()
 	if err != nil {
 		self.conn.Close()
@@ -127,9 +103,6 @@ func (self *Server) SendTo(addr net.Addr, packet Packet) (err error) {
 
 // readFromConnection retrieves OSC packets.
 func (self *Server) readFromConnection() (packet Packet, err error) {
-	if self.conn == nil {
-		return nil, fmt.Errorf("self.conn is nil")
-	}
 	data := make([]byte, 65535)
 	var n, start int
 	n, _, err = self.conn.ReadFromUDP(data)
@@ -357,4 +330,15 @@ func readBlob(reader *bufio.Reader) (blob []byte, n int, err error) {
 	}
 
 	return blob, n, nil
+}
+
+var invalidAddressRunes = []rune{'*', '?', ',', '[', ']', '{', '}', '#', ' '}
+
+func validateAddress(addr string) error {
+	for _, chr := range invalidAddressRunes {
+		if strings.ContainsRune(addr, chr) {
+			return ErrInvalidAddress
+		}
+	}
+	return nil
 }
