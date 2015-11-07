@@ -10,6 +10,14 @@ import (
 	"time"
 )
 
+// Common errors.
+var (
+	ErrAlreadyRunning = errors.New("server is already running")
+	ErrNoDispatcher   = errors.New("no dispatcher defined")
+	ErrPrematureClose = errors.New("server cannot be closed before calling Listen")
+	ErrInvalidTypeTag = errors.New("invalid type tag")
+)
+
 // Server is an OSC server.
 type Server struct {
 	Address     string         // Address is the listening address.
@@ -49,7 +57,7 @@ func (self *Server) connect() error {
 // Close stops the OSC server and closes the connection.
 func (self *Server) Close() error {
 	if !self.running {
-		return errors.New("Server is not running")
+		return ErrPrematureClose
 	}
 	self.running = false
 	return self.conn.Close()
@@ -64,13 +72,11 @@ func (self *Server) AddMsgHandler(address string, handler HandlerFunc) error {
 // ListenAndServe retrieves incoming OSC packets and dispatches the retrieved OSC packets.
 func (self *Server) ListenAndDispatch() error {
 	if self.running {
-		err := errors.New("Server is already running")
-		return err
+		return ErrAlreadyRunning
 	}
 
 	if self.dispatcher == nil {
-		err := errors.New("No dispatcher definied")
-		return err
+		return ErrNoDispatcher
 	}
 
 	if err := self.connect(); err != nil {
@@ -107,7 +113,7 @@ func (self *Server) Listen() error {
 	}
 
 	if self.running {
-		return errors.New("Server is already running")
+		return ErrAlreadyRunning
 	}
 
 	// Set read timeout
@@ -205,7 +211,7 @@ func (self *Server) readBundle(reader *bufio.Reader, start *int, end int) (bundl
 	*start += n
 
 	if startTag != BundleTag {
-		return nil, errors.New(fmt.Sprintf("Invalid bundle start tag: %s", startTag))
+		return nil, fmt.Errorf("Invalid bundle start tag: %s", startTag)
 	}
 
 	// Read the timetag
@@ -272,7 +278,7 @@ func (self *Server) readArguments(msg *Message, reader *bufio.Reader, start *int
 
 	// If the typetag doesn't start with ',', it's not valid
 	if typetags[0] != ',' {
-		return errors.New("Unsupported type tag string")
+		return ErrInvalidTypeTag
 	}
 
 	// Remove ',' from the type tag
@@ -281,7 +287,7 @@ func (self *Server) readArguments(msg *Message, reader *bufio.Reader, start *int
 	for _, c := range typetags {
 		switch c {
 		default:
-			return errors.New(fmt.Sprintf("Unsupported type tag: %c", c))
+			return fmt.Errorf("Unsupported type tag: %c", c)
 
 		// int32
 		case 'i':
