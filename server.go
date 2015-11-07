@@ -14,7 +14,6 @@ import (
 
 // Common errors.
 var (
-	ErrAlreadyRunning = errors.New("server is already running")
 	ErrNoDispatcher   = errors.New("no dispatcher defined")
 	ErrPrematureClose = errors.New("server cannot be closed before calling Listen")
 	ErrInvalidTypeTag = errors.New("invalid type tag")
@@ -26,7 +25,6 @@ type Server struct {
 	Listening   chan struct{}  // Listening is a channel used to indicate when the server is running.
 	readTimeout time.Duration  // readTimeout is the timeout for reading from a connection.
 	dispatcher  *OscDispatcher // Dispatcher that dispatches OSC packets/messages.
-	running     bool           // Flag to store if the server is running or not.
 	conn        *net.UDPConn   // conn is a UDP connection object.
 }
 
@@ -76,10 +74,6 @@ func (self *Server) AddMsgHandler(address string, handler HandlerFunc) error {
 
 // Listen retrieves incoming OSC packets and dispatches the retrieved OSC packets.
 func (self *Server) Listen() error {
-	if self.running {
-		return ErrAlreadyRunning
-	}
-
 	if self.dispatcher == nil {
 		return ErrNoDispatcher
 	}
@@ -95,16 +89,13 @@ func (self *Server) Listen() error {
 		}
 	}
 
-	self.running = true
 	self.Listening <- struct{}{}
 
-	for self.running {
-		msg, err := self.readFromConnection()
-		if err != nil {
-			return err
-		}
-		self.dispatcher.Dispatch(msg)
+	msg, err := self.readFromConnection()
+	if err != nil {
+		return err
 	}
+	self.dispatcher.Dispatch(msg)
 
 	return nil
 }
