@@ -132,16 +132,6 @@ func (self *Server) Listen() error {
 	return nil
 }
 
-// Listen listens for incoming OSC packets and returns the packet if one is received.
-func (self *Server) ReceivePacket() (packet Packet, err error) {
-	msg, err := self.readFromConnection()
-	if err == nil {
-		return msg, nil
-	}
-
-	return nil, err
-}
-
 // Send sends an OSC Bundle or an OSC Message.
 func (self *Server) SendTo(addr net.Addr, packet Packet) (err error) {
 	if self.conn == nil {
