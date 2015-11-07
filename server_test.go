@@ -64,3 +64,13 @@ func TestServerMessageDispatching(t *testing.T) {
 		client.Send(msg)
 	}
 }
+
+func TestServerCloseBeforeListen(t *testing.T) {
+	server, err := NewServer("localhost:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := server.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
