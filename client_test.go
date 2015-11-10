@@ -40,13 +40,27 @@ func ExampleClient() {
 		client = NewClient(server.LocalAddr().String())
 		msg    = NewMessage("/osc/address")
 	)
-	msg.Append(int32(111))
-	msg.Append(true)
-	msg.Append("hello")
-	client.Send(msg)
-
-	if err := <-errChan; err != nil {
+	if err := msg.WriteInt32(111); err != nil {
 		log.Fatal(err)
+	}
+	if err := msg.WriteBool(true); err != nil {
+		log.Fatal(err)
+	}
+	if err := msg.WriteString("hello"); err != nil {
+		log.Fatal(err)
+	}
+
+	// Send a message.
+	if err := client.Send(msg); err != nil {
+		log.Fatal(err)
+	}
+
+	select {
+	default:
+	case err := <-errChan:
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 	// Output:
 	// /osc/address ,iTs 111 true hello

@@ -18,12 +18,12 @@ func TestInvalidAddress(t *testing.T) {
 func TestMessageDispatching(t *testing.T) {
 	handlers := map[string]HandlerFunc{
 		"/address/test": func(msg *Message) {
-			if len(msg.arguments) != 1 {
-				t.Error("Argument length should be 1 and is: " + string(len(msg.arguments)))
+			val, err := msg.ReadInt32()
+			if err != nil {
+				t.Fatal(err)
 			}
-
-			if msg.arguments[0].(int32) != 1122 {
-				t.Error("Argument should be 1122 and is: " + string(msg.arguments[0].(int32)))
+			if expected, got := int32(1122), val; expected != got {
+				t.Fatalf("Expected %d got %d", expected, got)
 			}
 		},
 	}
@@ -49,7 +49,9 @@ func TestMessageDispatching(t *testing.T) {
 	case <-server.Listening:
 		client := NewClient("localhost:6677")
 		msg := NewMessage("/address/test")
-		msg.Append(int32(1122))
+		if err := msg.WriteInt32(1122); err != nil {
+			t.Fatal(err)
+		}
 		client.Send(msg)
 	}
 }

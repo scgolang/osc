@@ -3,7 +3,6 @@
 package osc
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/binary"
 	"errors"
@@ -19,6 +18,19 @@ const (
 	timeTagImmediate      = uint64(1)
 	secondsFrom1900To1970 = 2208988800
 	BundleTag             = "#bundle"
+	messageChar           = '/'
+	bundleChar            = '#'
+	typetagPrefix         = ','
+	typetagInt            = 'i'
+	typetagFloat          = 'f'
+	typetagString         = 's'
+	typetagBlob           = 'b'
+	typetagFalse          = 'F'
+	typetagTrue           = 'T'
+)
+
+var (
+	byteOrder = binary.BigEndian
 )
 
 // OSC message handler interface. Every handler function for an OSC message must
@@ -68,38 +80,27 @@ func writeBlob(data []byte, buff *bytes.Buffer) (numberOfBytes int, err error) {
 	return 4 + len(data) + numPadBytes, nil
 }
 
-// readPaddedString reads a padded string from the given reader. The padding bytes
-// are removed from the reader.
-func readPaddedString(reader *bufio.Reader) (str string, n int, err error) {
-	// Read the string from the reader
-	str, err = reader.ReadString(0)
-	if err != nil {
-		return "", 0, err
+// readPaddedString reads a padded string from a slice of bytes.
+// The string is returned along with the number of bytes read (including
+// the padding).
+func readPaddedString(data []byte) (string, int) {
+	n := len(data)
+	if n == 0 {
+		return "", 0
 	}
-	n = len(str)
-
-	// Remove the string delimiter, in order to calculate the right amount
-	// of padding bytes
-	str = str[:len(str)-1]
-
-	// Remove the padding bytes
-	padLen := padBytesNeeded(len(str)) - 1
-	if padLen > 0 {
-		n += padLen
-		padBytes := make([]byte, padLen)
-		if _, err = reader.Read(padBytes); err != nil {
-			return "", 0, err
+	for i := 0; i < n; i++ {
+		if data[i] == 0 {
+			return string(data[0:i]), paddedSize(i)
 		}
 	}
-
-	return str, n, nil
+	return string(data), n
 }
 
 // writePaddedString writes a string with padding bytes to the a buffer.
-// Returns, the number of written bytes and an error if any.
-func writePaddedString(str string, buff *bytes.Buffer) (numberOfBytes int, err error) {
+// Returns the number of written bytes and an error if any.
+func writePaddedString(str string, buf *bytes.Buffer) (numberOfBytes int, err error) {
 	// Write the string to the buffer
-	n, err := buff.WriteString(str)
+	n, err := buf.WriteString(str)
 	if err != nil {
 		return 0, err
 	}
@@ -109,7 +110,7 @@ func writePaddedString(str string, buff *bytes.Buffer) (numberOfBytes int, err e
 	if numPadBytes > 0 {
 		padBytes := make([]byte, numPadBytes)
 		// Add the padding bytes to the buffer
-		if numPadBytes, err = buff.Write(padBytes); err != nil {
+		if numPadBytes, err = buf.Write(padBytes); err != nil {
 			return 0, err
 		}
 	}
@@ -121,6 +122,21 @@ func writePaddedString(str string, buff *bytes.Buffer) (numberOfBytes int, err e
 // byte length.
 func padBytesNeeded(elementLen int) int {
 	return 4*(elementLen/4+1) - elementLen
+}
+
+// paddedSize determines the size of a padded string, given the
+// size of a string terminated with a single null byte.
+// strlen should be the size of the unpadded string *without* the null byte.
+func paddedSize(strlen int) int {
+	if strlen <= 0 {
+		return 0
+	}
+	for i := strlen + 1; true; i++ {
+		if i%4 == 0 {
+			return i
+		}
+	}
+	return strlen
 }
 
 ////

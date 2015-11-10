@@ -1,7 +1,6 @@
 package osc
 
 import (
-	"bufio"
 	"bytes"
 	"testing"
 )
@@ -15,12 +14,14 @@ func TestAppendArguments(t *testing.T) {
 		t.Errorf("OSC address should be \"%s\" and is \"%s\"", oscAddress, message.address)
 	}
 
-	message.Append("string argument")
-	message.Append(123456789)
-	message.Append(true)
-
-	if message.CountArguments() != 3 {
-		t.Errorf("Number of arguments should be %d and is %d", 3, message.CountArguments())
+	if err := message.WriteString("string argument"); err != nil {
+		t.Fatal(err)
+	}
+	if err := message.WriteInt32(123456789); err != nil {
+		t.Fatal(err)
+	}
+	if err := message.WriteBool(true); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -30,46 +31,17 @@ func TestEqualMessage(t *testing.T) {
 		msg2 = NewMessage("/address")
 	)
 
-	msg1.Append(1234)
-	msg2.Append(1234)
-	msg1.Append("test string")
-	msg2.Append("test string")
-
-	if !msg1.Equals(msg2) {
-		t.Error("Messages should be equal")
+	if err := msg1.WriteInt32(1234); err != nil {
+		t.Fatal(err)
 	}
-}
-
-func TestReadPaddedString(t *testing.T) {
-	buf1 := []byte{'t', 'e', 's', 't', 's', 't', 'r', 'i', 'n', 'g', 0, 0}
-	buf2 := []byte{'t', 'e', 's', 't', 0, 0, 0, 0}
-
-	bytesBuffer := bytes.NewBuffer(buf1)
-	st, n, err := readPaddedString(bufio.NewReader(bytesBuffer))
-	if err != nil {
-		t.Error("Error reading padded string: " + err.Error())
+	if err := msg2.WriteInt32(1234); err != nil {
+		t.Fatal(err)
 	}
-
-	if n != 12 {
-		t.Errorf("Number of bytes needs to be 12 and is: %d\n", n)
+	if err := msg1.WriteString("test string"); err != nil {
+		t.Fatal(err)
 	}
-
-	if st != "teststring" {
-		t.Errorf("String should be \"teststring\" and is \"%s\"", st)
-	}
-
-	bytesBuffer = bytes.NewBuffer(buf2)
-	st, n, err = readPaddedString(bufio.NewReader(bytesBuffer))
-	if err != nil {
-		t.Error("Error reading padded string: " + err.Error())
-	}
-
-	if n != 8 {
-		t.Errorf("Number of bytes needs to be 8 and is: %d\n", n)
-	}
-
-	if st != "test" {
-		t.Errorf("String should be \"test\" and is \"%s\"", st)
+	if err := msg2.WriteString("test string"); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -89,7 +61,7 @@ func TestWritePaddedString(t *testing.T) {
 	}
 }
 
-func TestPadBytesNeeded(t *testing.T) {
+func TestPadSize(t *testing.T) {
 	var n int
 	n = padBytesNeeded(4)
 	if n != 4 {
@@ -129,16 +101,16 @@ func TestPadBytesNeeded(t *testing.T) {
 
 func TestTypeTagsString(t *testing.T) {
 	msg := NewMessage("/some/address")
-	msg.Append(int32(100))
-	msg.Append(true)
-	msg.Append(false)
-
-	typeTags, err := msg.TypeTags()
-	if err != nil {
-		t.Error(err.Error())
+	if err := msg.WriteInt32(100); err != nil {
+		t.Fatal(err)
 	}
-
-	if typeTags != ",iTF" {
-		t.Errorf("Type tag string should be ',iTF' and is: %s", typeTags)
+	if err := msg.WriteBool(true); err != nil {
+		t.Fatal(err)
+	}
+	if err := msg.WriteBool(false); err != nil {
+		t.Fatal(err)
+	}
+	if expected, got := ",iTF", msg.TypeTags(); expected != got {
+		t.Fatalf("Expected %s got %s", expected, got)
 	}
 }

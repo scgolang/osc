@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"net"
 	"time"
 )
 
@@ -12,14 +13,59 @@ import (
 // followed by zero or more OSC bundle/message elements. The OSC-timetag is a 64-bit fixed
 // point time tag. See http://opensoundcontrol.org/spec-1_0 for more information.
 type Bundle struct {
-	Timetag  Timetag
-	Messages []*Message
-	Bundles  []*Bundle
+	Timetag       Timetag
+	Messages      []*Message
+	Bundles       []*Bundle
+	senderAddress net.Addr
 }
 
 // NewBundle returns an OSC Bundle. Use this function to create a new OSC Bundle.
 func NewBundle(time time.Time) (bundle *Bundle) {
 	return &Bundle{Timetag: NewTimetag(time)}
+}
+
+// parseBundle parses an OSC bundle from a slice of bytes.
+func parseBundle(data []byte, senderAddress net.Addr) (*Bundle, error) {
+	// Read the '#bundle' OSC string
+	startTag, _ := readPaddedString(data)
+	// *start += n
+
+	if startTag != BundleTag {
+		return nil, fmt.Errorf("Invalid bundle start tag: %s", startTag)
+	}
+
+	// Read the timetag
+	var (
+		timeTag uint64
+		r       = bytes.NewReader(data)
+	)
+	if err := binary.Read(r, binary.BigEndian, &timeTag); err != nil {
+		return nil, err
+	}
+	// *start += 8
+
+	// Create a new bundle
+	bundle := &Bundle{Timetag: Timetag(timeTag), senderAddress: senderAddress}
+
+	// Read until the end of the buffer
+	// for *start < end {
+	// 	// Read the size of the bundle element
+	// 	var length int32
+	// 	err = binary.Read(r, binary.BigEndian, &length)
+	// 	*start += 4
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+
+	// 	var packet Packet
+	// 	packet, err = self.readPacket(r, start, end)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	bundle.Append(packet)
+	// }
+
+	return bundle, nil
 }
 
 // Append appends an OSC bundle or OSC message to the bundle.
