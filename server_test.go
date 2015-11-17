@@ -3,7 +3,7 @@ package osc
 import "testing"
 
 func TestInvalidAddress(t *testing.T) {
-	handlers := map[string]HandlerFunc{
+	handlers := map[string]Method{
 		"/address*/test": func(msg *Message) {},
 	}
 	server, err := NewServer("", handlers)
@@ -16,7 +16,7 @@ func TestInvalidAddress(t *testing.T) {
 }
 
 func TestMessageDispatching(t *testing.T) {
-	handlers := map[string]HandlerFunc{
+	handlers := map[string]Method{
 		"/address/test": func(msg *Message) {
 			val, err := msg.ReadInt32()
 			if err != nil {
@@ -47,12 +47,19 @@ func TestMessageDispatching(t *testing.T) {
 			t.Fatal(err)
 		}
 	case <-server.Listening:
-		client := NewClient("localhost:6677")
+		client, err := NewClient(server.LocalAddr())
+		if err != nil {
+			t.Fatal(err)
+		}
 		msg := NewMessage("/address/test")
 		if err := msg.WriteInt32(1122); err != nil {
 			t.Fatal(err)
 		}
-		client.Send(msg)
+		data, err := msg.Bytes()
+		if err != nil {
+			t.Fatal(err)
+		}
+		client.Send(data)
 	}
 }
 

@@ -2,17 +2,19 @@ package osc
 
 import (
 	"errors"
-	"fmt"
+	"io"
+	"io/ioutil"
 	"net"
 	"strings"
 )
 
 const (
-	readBufSize = 16384
+	readBufSize = 4096
 )
 
 // Common errors.
 var (
+	errBundle         = errors.New("message is a bundle")
 	ErrNoDispatcher   = errors.New("no dispatcher defined")
 	ErrPrematureClose = errors.New("server cannot be closed before calling Listen")
 )
@@ -25,7 +27,7 @@ type Server struct {
 }
 
 // NewServer returns a new OSC Server.
-func NewServer(addr string, handlers map[string]HandlerFunc) (*Server, error) {
+func NewServer(addr string, handlers map[string]Method) (*Server, error) {
 	for addr, _ := range handlers {
 		if err := validateAddress(addr); err != nil {
 			return nil, err
@@ -50,76 +52,73 @@ func NewServer(addr string, handlers map[string]HandlerFunc) (*Server, error) {
 }
 
 // LocalAddr returns the local network address.
-func (self *Server) LocalAddr() net.Addr {
-	return self.conn.LocalAddr()
+func (server *Server) LocalAddr() net.Addr {
+	return server.conn.LocalAddr()
 }
 
 // Close stops the OSC server and closes the connection.
-func (self *Server) Close() error {
-	if self.conn == nil {
+func (server *Server) Close() error {
+	if server.conn == nil {
 		return nil
 	}
-	return self.conn.Close()
+	return server.conn.Close()
 }
 
 // Listen retrieves incoming OSC packets and dispatches the retrieved OSC packets.
-func (self *Server) Listen() error {
-	if self.dispatcher == nil {
+func (server *Server) Listen() error {
+	if server.dispatcher == nil {
 		return ErrNoDispatcher
 	}
 
-	self.Listening <- struct{}{}
+	server.Listening <- struct{}{}
 
-	msg, err := self.readFromConnection()
+	for {
+		if err := server.serve(); err != nil {
+			return err
+		}
+	}
+}
+
+// serve retrieves OSC packets.
+func (server *Server) serve() error {
+	data := make([]byte, readBufSize)
+
+	_, senderAddress, err := server.conn.ReadFromUDP(data)
 	if err != nil {
 		return err
 	}
-	self.dispatcher.dispatch(msg)
+
+	switch data[0] {
+	case messageChar:
+		msg, err := parseMessage(data, senderAddress)
+		if err != nil {
+			return err
+		}
+		return server.dispatcher.dispatchMessage(msg)
+	case bundleChar:
+		bun, err := parseBundle(data, senderAddress)
+		if err != nil {
+			return err
+		}
+		return server.dispatcher.dispatchBundle(bun)
+	default:
+		return ErrParse
+	}
 
 	return nil
 }
 
 // Send sends an OSC Bundle or an OSC Message.
-func (self *Server) SendTo(addr net.Addr, packet Packet) (err error) {
-	data, err := packet.ToByteArray()
+func (server *Server) SendTo(addr net.Addr, r io.Reader) error {
+	data, err := ioutil.ReadAll(r)
 	if err != nil {
-		self.conn.Close()
+		server.conn.Close()
 		return err
 	}
-
-	written, err := self.conn.WriteTo(data, addr)
-	if err != nil {
-		fmt.Println("could not write packet")
-		self.conn.Close()
-		return err
+	if _, err := server.conn.WriteTo(data, addr); err != nil {
+		return server.conn.Close()
 	}
-	if written != len(data) {
-		errmsg := "only wrote %d bytes of osc packet with length %d"
-		return fmt.Errorf(errmsg, written, len(data))
-	}
-
 	return nil
-}
-
-// readFromConnection retrieves OSC packets.
-func (self *Server) readFromConnection() (packet Packet, err error) {
-	data := make([]byte, readBufSize)
-
-	_, senderAddress, err := self.conn.ReadFromUDP(data)
-	if err != nil {
-		return nil, err
-	}
-
-	switch data[0] {
-	case messageChar:
-		return parseMessage(data, senderAddress)
-	case bundleChar:
-		return parseBundle(data, senderAddress)
-	default:
-		return nil, ErrParse
-	}
-
-	return packet, nil
 }
 
 var invalidAddressRunes = []rune{'*', '?', ',', '[', ']', '{', '}', '#', ' '}

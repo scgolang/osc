@@ -10,8 +10,8 @@ func TestAppendArguments(t *testing.T) {
 		oscAddress = "/address"
 		message    = NewMessage(oscAddress)
 	)
-	if message.address != oscAddress {
-		t.Errorf("OSC address should be \"%s\" and is \"%s\"", oscAddress, message.address)
+	if expected, got := []byte(oscAddress), message.address; 0 != bytes.Compare(expected, got) {
+		t.Errorf("Expected %q got %q", expected, got)
 	}
 
 	if err := message.WriteString("string argument"); err != nil {

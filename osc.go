@@ -33,24 +33,12 @@ var (
 	byteOrder = binary.BigEndian
 )
 
-// OSC message handler interface. Every handler function for an OSC message must
-// implement this interface.
-type Handler interface {
-	HandleMessage(msg *Message)
-}
+// Method is an OSC method
+type Method func(msg *Message)
 
-// Type defintion for an OSC handler function
-type HandlerFunc func(msg *Message)
-
-// HandleMessage calls themeself with the given OSC Message. Implements the
-// Handler interface.
-func (f HandlerFunc) HandleMessage(msg *Message) {
-	f(msg)
-}
-
-// Packet is the interface for Message and Bundle.
-type Packet interface {
-	ToByteArray() ([]byte, error)
+// Matcher should be implemented by types that can match an OSC address.
+type Matcher interface {
+	Match(pattern []byte) bool
 }
 
 // writeBlob writes the data byte array as an OSC blob into buff. If the length of
@@ -163,20 +151,9 @@ func timetagToTime(timetag uint64) (t time.Time) {
 	return time.Unix(int64((timetag>>32)-secondsFrom1900To1970), int64(timetag&0xffffffff))
 }
 
-// existsAddress returns true if the address s is found in handlers. Otherwise, false.
-func existsAddress(s string, handlers map[string]Handler) bool {
-	for address, _ := range handlers {
-		if address == s {
-			return true
-		}
-	}
-
-	return false
-}
-
 // getRegEx compiles and returns a regular expression object for the given address
 // pattern.
-func getRegEx(pattern string) *regexp.Regexp {
+func getRegEx(pattern string) (*regexp.Regexp, error) {
 	pattern = strings.Replace(pattern, ".", "\\.", -1) // Escape all '.' in the pattern
 	pattern = strings.Replace(pattern, "(", "\\(", -1) // Escape all '(' in the pattern
 	pattern = strings.Replace(pattern, ")", "\\)", -1) // Escape all ')' in the pattern
@@ -185,8 +162,7 @@ func getRegEx(pattern string) *regexp.Regexp {
 	pattern = strings.Replace(pattern, ",", "|", -1)   // Change a ',' to '|'
 	pattern = strings.Replace(pattern, "}", ")", -1)   // Change a '}' to ')'
 	pattern = strings.Replace(pattern, "?", ".", -1)   // Change a '?' to '.'
-
-	return regexp.MustCompile(pattern)
+	return regexp.Compile(pattern)
 }
 
 // getTypeTag returns the OSC type tag for the given argument.
