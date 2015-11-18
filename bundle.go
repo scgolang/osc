@@ -1,9 +1,7 @@
 package osc
 
 import (
-	"bytes"
 	"encoding/binary"
-	"fmt"
 	"io"
 	"net"
 	"time"
@@ -62,27 +60,27 @@ func NewBundle() *Bundle {
 // parseBundle parses an OSC bundle from a slice of bytes.
 func parseBundle(data []byte, senderAddress net.Addr) (*Bundle, error) {
 	// Read the '#bundle' OSC string
-	startTag, _ := readPaddedString(data)
-	// *start += n
+	// startTag, _ := readPaddedString(data)
+	// // *start += n
 
-	if startTag != BundleTag {
-		return nil, fmt.Errorf("Invalid bundle start tag: %s", startTag)
-	}
+	// if startTag != BundleTag {
+	// 	return nil, fmt.Errorf("Invalid bundle start tag: %s", startTag)
+	// }
 
-	// Read the timetag
-	var (
-		timeTag uint64
-		r       = bytes.NewReader(data)
-	)
-	if err := binary.Read(r, binary.BigEndian, &timeTag); err != nil {
-		return nil, err
-	}
-	// *start += 8
+	// // Read the timetag
+	// var (
+	// 	timeTag uint64
+	// 	r       = bytes.NewReader(data)
+	// )
+	// if err := binary.Read(r, binary.BigEndian, &timeTag); err != nil {
+	// 	return nil, err
+	// }
+	// // *start += 8
 
-	// Create a new bundle
-	bundle := &Bundle{Timetag: Timetag(timeTag), SenderAddress: senderAddress}
+	// // Create a new bundle
+	// bundle := &Bundle{Timetag: Timetag(timeTag), SenderAddress: senderAddress}
 
-	return bundle, nil
+	return nil, nil
 }
 
 // Element is an implementation of the Elementer interface.

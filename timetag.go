@@ -19,6 +19,24 @@ func NewTimetag(timeStamp time.Time) Timetag {
 	return Timetag(timeToTimetag(timeStamp))
 }
 
+// timeToTimetag converts the given time to an OSC timetag.
+// An OSC timetag is defined as follows:
+// Time tags are represented by a 64 bit fixed point number. The first 32 bits
+// specify the number of seconds since midnight on January 1, 1900, and the
+// last 32 bits specify fractional parts of a second to a precision of about
+// 200 picoseconds. This is the representation used by Internet NTP timestamps.
+// The time tag value consisting of 63 zero bits followed by a one in the least
+// signifigant bit is a special case meaning "immediately."
+func timeToTimetag(time time.Time) Timetag {
+	timetag := uint64((secondsFrom1900To1970 + time.Unix()) << 32)
+	return Timetag(timetag + uint64(uint32(time.Nanosecond())))
+}
+
+// timetagToTime converts the given timetag to a time object.
+func timetagToTime(timetag uint64) time.Time {
+	return time.Unix(int64((timetag>>32)-secondsFrom1900To1970), int64(timetag&0xffffffff))
+}
+
 // FractionalSecond returns the last 32 bits of the Osc Time Tag. Specifies the
 // fractional part of a second.
 func (self Timetag) FractionalSecond() uint32 {

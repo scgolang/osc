@@ -6,25 +6,28 @@ var (
 	ErrInvalidAddress = errors.New("invalid OSC address")
 )
 
-// oscDispatcher dispatches OSC packets.
-type oscDispatcher map[string]Method
+// Method is an OSC method
+type Method func(msg *Message) error
 
-// dispatchMessage dispatches OSC message.
-func (disp oscDispatcher) dispatchMessage(msg *Message) error {
+// Dispatcher dispatches OSC packets.
+type Dispatcher map[string]Method
+
+// DispatchMessage dispatches OSC message.
+func (disp Dispatcher) DispatchMessage(msg *Message) error {
 	for address, method := range disp {
 		matched, err := msg.Match(address)
 		if err != nil {
 			return err
 		}
 		if matched {
-			method(msg)
+			return method(msg)
 		}
 	}
 	return nil
 }
 
-// dispatchBundle dispatches an OSC bundle.
-func (disp oscDispatcher) dispatchBundle(bun *Bundle) error {
+// DispatchBundle dispatches an OSC bundle.
+func (disp Dispatcher) DispatchBundle(bun *Bundle) error {
 	for address, method := range disp {
 		bun.Invoke(address, method)
 	}

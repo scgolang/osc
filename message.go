@@ -230,7 +230,7 @@ func (msg *Message) Match(address string) (bool, error) {
 }
 
 // Bytes returns the message as a slice of bytes.
-func (msg *Message) Bytes() ([]byte, error) {
+func (msg *Message) bytes() ([]byte, error) {
 	var (
 		w            = &bytes.Buffer{}
 		bytesWritten int64
@@ -311,33 +311,4 @@ func (msg *Message) Print(w io.Writer) error {
 	}
 
 	return nil
-}
-
-// readBlob reads an OSC Blob from the blob byte array.
-// Padding bytes are removed from the reader and not returned.
-func readBlob(r io.Reader) (blob []byte, n int, err error) {
-	// First, get the length
-	var blobLen int
-	if err = binary.Read(r, binary.BigEndian, &blobLen); err != nil {
-		return nil, 0, err
-	}
-	n = 4 + blobLen
-
-	// Read the data
-	blob = make([]byte, blobLen)
-	if _, err = r.Read(blob); err != nil {
-		return nil, 0, err
-	}
-
-	// Remove the padding bytes
-	numPadBytes := padBytesNeeded(blobLen)
-	if numPadBytes > 0 {
-		n += numPadBytes
-		dummy := make([]byte, numPadBytes)
-		if _, err = r.Read(dummy); err != nil {
-			return nil, 0, err
-		}
-	}
-
-	return blob, n, nil
 }
