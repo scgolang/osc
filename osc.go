@@ -1,5 +1,4 @@
 // osc provides a package for sending and receiving OpenSoundControl messages.
-// The package is implemented in pure Go.
 package osc
 
 import (
