@@ -6,7 +6,10 @@ import (
 )
 
 func TestTypeTagsString(t *testing.T) {
-	msg := NewMessage("/some/address")
+	msg, err := NewMessage("/some/address")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := msg.WriteInt32(100); err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +28,10 @@ func TestWriteRead(t *testing.T) {
 	const blob = `Able was I ere I saw Elba.`
 
 	// create a message and write some data
-	msg := NewMessage("/some/address")
+	msg, err := NewMessage("/some/address")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := msg.WriteInt32(20); err != nil {
 		t.Fatal(err)
 	}
@@ -90,6 +96,18 @@ func TestWriteRead(t *testing.T) {
 		}
 		if expected, got := true, boolval; expected != got {
 			t.Fatalf("Expected %t got %t", expected, got)
+		}
+	}
+}
+
+func TestVerifyParts(t *testing.T) {
+	// Pairs that should match
+	for _, pair := range [][2]string{
+		{"/osc/address", "/osc/address"},
+		{"/path/to/method", "/path/to/meth?d"},
+	} {
+		if !verifyParts(pair[0], pair[1]) {
+			t.Fatalf("Expected %s to have the same parts as %s", pair[0], pair[1])
 		}
 	}
 }

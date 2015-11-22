@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
 )
 
 var (
@@ -27,13 +28,13 @@ type Message struct {
 }
 
 // NewMessage creates a new OSC message.
-func NewMessage(addr string) *Message {
+func NewMessage(addr string) (*Message, error) {
 	return &Message{
 		address:     []byte(addr),
 		argbuf:      &bytes.Buffer{},
 		typetag:     []byte{typetagPrefix},
 		ttReadIndex: 1, // skip the leading ','
-	}
+	}, nil
 }
 
 // ReadInt32 reads an int32 value from an OSC message.
@@ -206,16 +207,18 @@ func (msg *Message) Sender() net.Addr {
 // Returns true, if the address of the OSC Message matches the given address.
 // Case sensitive!
 func (msg *Message) Match(address string) (bool, error) {
-	exp, err := getRegEx(string(msg.address))
+	addr := string(msg.address)
+
+	// verify same number of parts
+	if !verifyParts(address, addr) {
+		return false, nil
+	}
+
+	exp, err := getRegEx(addr)
 	if err != nil {
 		return false, err
 	}
-
-	if exp.MatchString(address) {
-		return true, nil
-	}
-
-	return false, nil
+	return exp.MatchString(address), nil
 }
 
 // bytes returns the message as a slice of bytes.
@@ -369,4 +372,27 @@ func (msg *Message) clone() (*Message, error) {
 		ttReadIndex:   1,
 		senderAddress: msg.senderAddress,
 	}, nil
+}
+
+// verifyParts verifies that m1 and m2 have the same number of parts,
+// where a part is a nonempty string between pairs of '/' or a nonempty
+// string at the end.
+func verifyParts(m1, m2 string) bool {
+	if m1 == m2 {
+		return true
+	}
+
+	mc := string(messageChar)
+
+	p1, p2 := strings.Split(m1, mc), strings.Split(m2, mc)
+	if len(p1) != len(p2) || len(p1) == 0 {
+		return false
+	}
+	for i, p := range p1[1:] {
+		if len(p) == 0 || len(p2[i+1]) == 0 {
+			return false
+		}
+	}
+
+	return true
 }

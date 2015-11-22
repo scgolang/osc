@@ -95,7 +95,10 @@ func TestSend(t *testing.T) {
 		errChan <- server.Serve(dispatcher) // Best effort.
 	}()
 
-	msg := NewMessage("/osc/address")
+	msg, err := NewMessage("/osc/address")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := msg.WriteInt32(111); err != nil {
 		t.Fatal(err)
 	}
