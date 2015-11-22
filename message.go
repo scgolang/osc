@@ -37,6 +37,11 @@ func NewMessage(addr string) (*Message, error) {
 	}, nil
 }
 
+// Address returns the address of the message.
+func (msg *Message) Address() string {
+	return string(msg.address)
+}
+
 // CountArguments returns the number of arguments in the OSC message.
 func (msg *Message) CountArguments() int {
 	return len(msg.typetag) - 1
