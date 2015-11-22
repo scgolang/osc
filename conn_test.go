@@ -80,6 +80,10 @@ func TestSend(t *testing.T) {
 	}
 	defer func() { _ = server.Close() }() // Best effort.
 
+	go func() {
+		errChan <- server.Serve(dispatcher) // Best effort.
+	}()
+
 	serverAddr := server.LocalAddr()
 	raddr, err := net.ResolveUDPAddr(serverAddr.Network(), serverAddr.String())
 	if err != nil {
@@ -90,10 +94,6 @@ func TestSend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	go func() {
-		errChan <- server.Serve(dispatcher) // Best effort.
-	}()
 
 	msg, err := NewMessage("/osc/address")
 	if err != nil {
