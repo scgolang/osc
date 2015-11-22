@@ -37,6 +37,11 @@ func NewMessage(addr string) (*Message, error) {
 	}, nil
 }
 
+// CountArguments returns the number of arguments in the OSC message.
+func (msg *Message) CountArguments() int {
+	return len(typetag) - 1
+}
+
 // ReadInt32 reads an int32 value from an OSC message.
 func (msg *Message) ReadInt32() (int32, error) {
 	tt := msg.typetag[msg.ttReadIndex]
