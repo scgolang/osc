@@ -163,7 +163,7 @@ func (msg *Message) WriteBool(val bool) error {
 func (msg *Message) WriteString(val string) error {
 	msg.typetag = append(msg.typetag, typetagString)
 	i := 0
-	for _, c := range []byte(val) {
+	for _, c := range append([]byte(val), 0) {
 		if err := msg.argbuf.WriteByte(c); err != nil {
 			return err
 		}
@@ -239,7 +239,7 @@ func (msg *Message) bytes() ([]byte, error) {
 	)
 
 	// Write address
-	if bw, err := w.Write(msg.address); err != nil {
+	if bw, err := w.Write(append(msg.address, 0)); err != nil {
 		return nil, err
 	} else {
 		bytesWritten += int64(bw)
@@ -254,7 +254,7 @@ func (msg *Message) bytes() ([]byte, error) {
 	}
 
 	// Write typetag
-	if bw, err := w.Write(msg.typetag); err != nil {
+	if bw, err := w.Write(append(msg.typetag, 0)); err != nil {
 		return nil, err
 	} else {
 		bytesWritten += int64(bw)
@@ -332,8 +332,9 @@ func parseMessage(data []byte, senderAddress net.Addr) (*Message, error) {
 		n       = len(data)
 	)
 	for i < n {
-		if data[i] == ',' {
+		if data[i] == 0 {
 			address = data[0:i]
+			i++
 			break
 		}
 		i++
@@ -373,6 +374,7 @@ func (msg *Message) parseArguments(data []byte) error {
 	for i < n {
 		if data[i] == 0 {
 			msg.typetag = data[0:i]
+			i++
 			break
 		}
 		i++
