@@ -245,6 +245,14 @@ func (msg *Message) bytes() ([]byte, error) {
 		bytesWritten += int64(bw)
 	}
 
+	// Write padding
+	for i := bytesWritten; i%4 != 0; i++ {
+		if err := w.WriteByte(0); err != nil {
+			return nil, err
+		}
+		bytesWritten++
+	}
+
 	// Write typetag
 	if bw, err := w.Write(msg.typetag); err != nil {
 		return nil, err
@@ -257,6 +265,7 @@ func (msg *Message) bytes() ([]byte, error) {
 		if err := w.WriteByte(0); err != nil {
 			return nil, err
 		}
+		bytesWritten++
 	}
 
 	// Write arguments
@@ -334,6 +343,11 @@ func parseMessage(data []byte, senderAddress net.Addr) (*Message, error) {
 		address:       address,
 		senderAddress: senderAddress,
 		ttReadIndex:   1,
+	}
+
+	// advance i to the next multiple of 4
+	for i%4 != 0 {
+		i++
 	}
 
 	// Read all arguments
