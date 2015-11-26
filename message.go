@@ -224,7 +224,7 @@ func (msg *Message) Match(address string) (bool, error) {
 		return false, nil
 	}
 
-	exp, err := getRegEx(addr)
+	exp, err := getRegex(addr)
 	if err != nil {
 		return false, err
 	}

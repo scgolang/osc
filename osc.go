@@ -1,11 +1,7 @@
 // osc provides a package for sending and receiving OpenSoundControl messages.
 package osc
 
-import (
-	"encoding/binary"
-	"regexp"
-	"strings"
-)
+import "encoding/binary"
 
 const (
 	// The time tag value consisting of 63 zero bits followed by a one in the
@@ -27,17 +23,3 @@ const (
 var (
 	byteOrder = binary.BigEndian
 )
-
-// getRegEx compiles and returns a regular expression object for the given address
-// pattern.
-func getRegEx(pattern string) (*regexp.Regexp, error) {
-	pattern = strings.Replace(pattern, ".", "\\.", -1) // Escape all '.' in the pattern
-	pattern = strings.Replace(pattern, "(", "\\(", -1) // Escape all '(' in the pattern
-	pattern = strings.Replace(pattern, ")", "\\)", -1) // Escape all ')' in the pattern
-	pattern = strings.Replace(pattern, "*", ".*", -1)  // Replace a '*' with '.*' that matches zero or more characters
-	pattern = strings.Replace(pattern, "{", "(", -1)   // Change a '{' to '('
-	pattern = strings.Replace(pattern, ",", "|", -1)   // Change a ',' to '|'
-	pattern = strings.Replace(pattern, "}", ")", -1)   // Change a '}' to ')'
-	pattern = strings.Replace(pattern, "?", ".", -1)   // Change a '?' to '.'
-	return regexp.Compile(pattern)
-}

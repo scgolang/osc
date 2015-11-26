@@ -25,6 +25,18 @@ func ListenUDP(network string, laddr *net.UDPAddr) (*UDPConn, error) {
 	return &UDPConn{UDPConn: conn}, nil
 }
 
+// ListenMulticastUDP listens for OSC messages
+// addressed to the multicast group gaddr on the
+// interface ifi.
+// See https://golang.org/pkg/net/#ListenMulticastUDP.
+func ListenMulticastUDP(network string, ifi *net.Interface, gaddr *net.UDPAddr) (*UDPConn, error) {
+	conn, err := net.ListenMulticastUDP(network, ifi, gaddr)
+	if err != nil {
+		return nil, err
+	}
+	return &UDPConn{UDPConn: conn}, nil
+}
+
 // Serve starts dispatching OSC.
 func (conn *UDPConn) Serve(dispatcher Dispatcher) error {
 	if dispatcher == nil {

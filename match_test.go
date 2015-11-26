@@ -9,7 +9,7 @@ func TestMatch(t *testing.T) {
 		{"/path/to/meth?d", "/path/to/method"},
 		{"/path/to/*", "/path/to/method"},
 		{"/path/to/method*", "/path/to/method"},
-		{"/path/to/[dohmet]", "/path/to/method"},
+		{"/path/to/m[aei]thod", "/path/to/method"},
 	} {
 		msg, err := NewMessage(pair[0])
 		if err != nil {
@@ -30,7 +30,7 @@ func TestMatch(t *testing.T) {
 		{"/path/to/me?thod", "/path/to/method"},
 		{"/path/to?method", "/path/to/method"},
 		{"/path/to*", "/path/to/method"},
-		// {"/path/to/[domet]", "/path/to/method"},
+		{"/path/to/[domet]", "/path/to/method"},
 	} {
 		msg, err := NewMessage(pair[0])
 		if err != nil {
