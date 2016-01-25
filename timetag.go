@@ -3,7 +3,18 @@ package osc
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"time"
+)
+
+const (
+	// TimetagSize is the number of 8-bit bytes
+	// in an OSC timetag.
+	TimetagSize = 8
+
+	// Immediately is a special timetag value that
+	// means "immediately".
+	Immediately = Timetag(1)
 )
 
 // Timetag represents an OSC Time Tag.
@@ -15,8 +26,8 @@ import (
 type Timetag uint64
 
 // NewTimetag returns a new OSC timetag object.
-func NewTimetag(timeStamp time.Time) Timetag {
-	return Timetag(timeToTimetag(timeStamp))
+func NewTimetag(t time.Time) Timetag {
+	return timeToTimetag(t)
 }
 
 // timeToTimetag converts the given time to an OSC timetag.
@@ -27,49 +38,27 @@ func NewTimetag(timeStamp time.Time) Timetag {
 // 200 picoseconds. This is the representation used by Internet NTP timestamps.
 // The time tag value consisting of 63 zero bits followed by a one in the least
 // signifigant bit is a special case meaning "immediately."
-func timeToTimetag(time time.Time) Timetag {
-	timetag := uint64((secondsFrom1900To1970 + time.Unix()) << 32)
-	return Timetag(timetag + uint64(uint32(time.Nanosecond())))
+func timeToTimetag(t time.Time) Timetag {
+	secs := uint64((secondsFrom1900To1970 + t.Unix()) << 32)
+	return Timetag(secs + uint64(uint32(t.Nanosecond())))
 }
 
-// timetagToTime converts the given timetag to a time object.
-func timetagToTime(timetag uint64) time.Time {
-	return time.Unix(int64((timetag>>32)-secondsFrom1900To1970), int64(timetag&0xffffffff))
-}
-
-// FractionalSecond returns the last 32 bits of the Osc Time Tag. Specifies the
-// fractional part of a second.
-func (self Timetag) FractionalSecond() uint32 {
-	return uint32(uint64(self) << 32)
-}
-
-// SecondsSinceEpoch returns the first 32 bits (the number of seconds since the
-// midnight 1900) from the OSC timetag.
-func (self Timetag) SecondsSinceEpoch() uint32 {
-	return uint32(uint64(self) >> 32)
-}
-
-// ToByteArray converts the OSC Time Tag to a byte array.
-func (self Timetag) ToByteArray() []byte {
-	var data = new(bytes.Buffer)
-	binary.Write(data, binary.BigEndian, uint64(self))
-	return data.Bytes()
-}
-
-// ExpiresIn calculates the number of seconds until the current time is the
-// same as the value of the timetag. It returns zero if the value of the
-// timetag is in the past.
-func (self Timetag) ExpiresIn() time.Duration {
-	if int(self) <= 1 {
-		return 0
+// parseTimetag parses a timetag from a byte slice.
+func parseTimetag(data []byte) (Timetag, error) {
+	if len(data) < 8 {
+		return Timetag(0), fmt.Errorf("timetags must be 64-bit")
 	}
-
-	tt := timetagToTime(uint64(self))
-	seconds := tt.Sub(time.Now())
-
-	if seconds <= 0 {
-		return 0
+	var (
+		buf1  = bytes.NewBuffer(data[:TimetagSize/2])
+		buf2  = bytes.NewBuffer(data[TimetagSize/2:])
+		secs  uint64
+		nsecs uint64
+	)
+	if err := binary.Read(buf1, byteOrder, &secs); err != nil {
+		return Timetag(0), nil
 	}
-
-	return seconds
+	if err := binary.Read(buf2, byteOrder, &nsecs); err != nil {
+		return Timetag(0), nil
+	}
+	return Timetag((secs << 32) + nsecs), nil
 }

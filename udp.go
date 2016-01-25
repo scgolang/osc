@@ -89,11 +89,11 @@ func (conn *UDPConn) serve(dispatcher Dispatcher) error {
 
 // Send sends an OSC message over UDP.
 func (conn *UDPConn) Send(msg *Message) error {
-	bs, err := msg.bytes()
+	contents, err := msg.Contents()
 	if err != nil {
 		return err
 	}
-	if _, err := conn.UDPConn.Write(bs); err != nil {
+	if _, err := conn.UDPConn.Write(contents); err != nil {
 		return err
 	}
 	return nil

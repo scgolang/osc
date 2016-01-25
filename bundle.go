@@ -1,131 +1,138 @@
 package osc
 
 import (
+	"bytes"
 	"encoding/binary"
-	"io"
+	"fmt"
 	"net"
 	"time"
 )
 
 var (
-	bundlePrefix = []byte{'#', 'b', 'u', 'n', 'd', 'l', 'e'}
+	bundlePrefix    = []byte{'#', 'b', 'u', 'n', 'd', 'l', 'e', 0}
+	bundlePrefixLen = len(bundlePrefix)
 )
 
-// BundleElement is an OSC bundle element.
-// A bundle element consists of an int32 that provides the bundle size
-// (which will always be a multiple of 4), followed by the contents.
-// A bundle element is either an OSC message or an OSC bundle.
-type BundleElement struct {
-	size     int32  // size will always be a multiple of 4
-	contents []byte // contents of bundle element
-}
-
-// WriteTo is an implementation of the io.WriterTo interface.
-func (el *BundleElement) WriteTo(w io.Writer) (int64, error) {
-	var bytesWritten int64
-	if err := binary.Write(w, byteOrder, el.size); err != nil {
-		return bytesWritten, err
-	}
-
-	bytesWritten += 4
-	if bw, err := w.Write(el.contents); err != nil {
-		return bytesWritten, err
-	} else {
-		bytesWritten += int64(bw)
-	}
-
-	return bytesWritten, nil
-}
-
-// Elementer provides the Element method that returns a
-// pointer to a BundleElement.
-type Elementer interface {
-	Element() *BundleElement
-}
-
+// Bundle is an OSC bundle.
 // An OSC Bundle consists of the OSC-string "#bundle" followed by an OSC Time Tag,
 // followed by zero or more bundle elements. The OSC-timetag is a 64-bit fixed
 // point time tag. See http://opensoundcontrol.org/spec-1_0 for more information.
 type Bundle struct {
 	Timetag       Timetag
-	Elements      []*BundleElement
+	Packets       []Packet
 	SenderAddress net.Addr
 }
 
-// NewBundle returns an OSC Bundle.
-func NewBundle() *Bundle {
-	return &Bundle{Timetag: NewTimetag(time.Now())}
-}
-
-// parseBundle parses an OSC bundle from a slice of bytes.
-func parseBundle(data []byte, senderAddress net.Addr) (*Bundle, error) {
-	// Read the '#bundle' OSC string
-	// startTag, _ := readPaddedString(data)
-	// // *start += n
-
-	// if startTag != BundleTag {
-	// 	return nil, fmt.Errorf("Invalid bundle start tag: %s", startTag)
-	// }
-
-	// // Read the timetag
-	// var (
-	// 	timeTag uint64
-	// 	r       = bytes.NewReader(data)
-	// )
-	// if err := binary.Read(r, binary.BigEndian, &timeTag); err != nil {
-	// 	return nil, err
-	// }
-	// // *start += 8
-
-	// // Create a new bundle
-	// bundle := &Bundle{Timetag: Timetag(timeTag), SenderAddress: senderAddress}
-
-	return nil, nil
-}
-
-// Element is an implementation of the Elementer interface.
-func (bun *Bundle) Element() *BundleElement {
-	return nil
-}
-
-// WriteTo is an implementation of the io.WriterTo interface.
-func (bun *Bundle) WriteTo(w io.Writer) (int64, error) {
-	var bytesWritten int64
+// Contents returns the contents of the bundle as a
+// slice of bytes.
+func (b *Bundle) Contents() ([]byte, error) {
+	var (
+		buf          = &bytes.Buffer{}
+		bytesWritten int64
+	)
 
 	// Add the '#bundle' string
-	if bw, err := w.Write(bundlePrefix); err != nil {
-		return bytesWritten, err
+	if bw, err := buf.Write(bundlePrefix); err != nil {
+		return nil, err
 	} else {
 		bytesWritten += int64(bw)
 	}
 	for i := bytesWritten; i%4 != 0; i++ {
-		if _, err := w.Write([]byte{0}); err != nil {
-			return bytesWritten, err
+		if err := buf.WriteByte(0); err != nil {
+			return nil, err
 		}
 		bytesWritten++
 	}
 
 	// Add the timetag
-	if err := binary.Write(w, byteOrder, bun.Timetag); err != nil {
-		return bytesWritten, err
+	if err := binary.Write(buf, byteOrder, b.Timetag); err != nil {
+		return nil, err
 	}
 	bytesWritten += 8
 
 	// Process all OSC Messages
-	for _, element := range bun.Elements {
-		if bw, err := element.WriteTo(w); err != nil {
-			return bytesWritten, err
+	for _, p := range b.Packets {
+		contents, err := p.Contents()
+		if err != nil {
+			return nil, err
+		}
+
+		size := int32(len(contents))
+		if err := binary.Write(buf, byteOrder, size); err != nil {
+			return nil, err
+		}
+
+		if bw, err := buf.Write(contents); err != nil {
+			return nil, err
 		} else {
 			bytesWritten += int64(bw)
 		}
 	}
 
-	return bytesWritten, nil
+	return buf.Bytes(), nil
 }
 
 // Invoke invokes an OSC method for each element of a
 // bundle recursively.
-func (bun *Bundle) Invoke(address string, method Method) error {
+func (b *Bundle) Invoke(address string, method Method) error {
 	// TODO: implement
 	return nil
+}
+
+// NewBundle returns an OSC Bundle.
+func NewBundle(t time.Time, packets ...Packet) *Bundle {
+	return &Bundle{
+		Timetag: NewTimetag(t),
+		Packets: packets,
+	}
+}
+
+// parseBundle parses an OSC bundle from a slice of bytes.
+func parseBundle(data []byte, senderAddress net.Addr) (*Bundle, error) {
+	var (
+		i = 0
+		b = &Bundle{SenderAddress: senderAddress}
+	)
+	if len(data) < len(bundlePrefix) {
+		return nil, fmt.Errorf("invalid bundle: %q", data)
+	}
+	if prefix := data[0:bundlePrefixLen]; 0 != bytes.Compare(prefix, bundlePrefix) {
+		return nil, fmt.Errorf("invalid bundle prefix: %q", prefix)
+	}
+	i = bundlePrefixLen
+
+	timetag, err := parseTimetag(data[i:])
+	if err != nil {
+		return nil, err
+	}
+	b.Timetag = timetag
+	i += TimetagSize
+
+	var (
+		r    = bytes.NewReader(data[i:])
+		size int32
+	)
+	for err := binary.Read(r, byteOrder, &size); err == nil; err = binary.Read(r, byteOrder, &size) {
+		i += 4
+		switch data[i] {
+		case messageChar:
+			pkt, err := parseMessage(data[i:], senderAddress)
+			if err != nil {
+				return nil, err
+			}
+			b.Packets = append(b.Packets, pkt)
+		case bundleChar:
+			pkt, err := parseBundle(data[i:], senderAddress)
+			if err != nil {
+				return nil, err
+			}
+			b.Packets = append(b.Packets, pkt)
+		default:
+			return nil, ErrParse
+		}
+		i += int(size)
+		r = bytes.NewReader(data[i:])
+	}
+
+	return b, nil
 }

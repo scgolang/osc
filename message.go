@@ -231,8 +231,9 @@ func (msg *Message) Match(address string) (bool, error) {
 	return exp.MatchString(address), nil
 }
 
-// bytes returns the message as a slice of bytes.
-func (msg *Message) bytes() ([]byte, error) {
+// Contents returns the contents of the message
+// as a slice of bytes.
+func (msg *Message) Contents() ([]byte, error) {
 	var (
 		w            = &bytes.Buffer{}
 		bytesWritten int64

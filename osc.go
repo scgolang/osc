@@ -23,3 +23,12 @@ const (
 var (
 	byteOrder = binary.BigEndian
 )
+
+// Packet is an OSC packet.
+// An OSC packet consists of its contents, a contiguous block
+// of binary data, and its size, the number of 8-bit bytes
+// that comprise the contents. The size of an OSC packet
+// is always a multiple of 4.
+type Packet interface {
+	Contents() ([]byte, error)
+}

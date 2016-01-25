@@ -124,12 +124,12 @@ func TestSend(t *testing.T) {
 
 	recvMsg := <-doneChan
 
-	recvData, err := recvMsg.bytes()
+	recvData, err := recvMsg.Contents()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	data, err := msg.bytes()
+	data, err := msg.Contents()
 	if err != nil {
 		t.Fatal(err)
 	}
