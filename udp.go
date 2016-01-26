@@ -73,13 +73,15 @@ func (conn *UDPConn) serve(dispatcher Dispatcher) error {
 		if err != nil {
 			return err
 		}
-		return dispatcher.DispatchMessage(msg)
+		// TODO: handle error.
+		go dispatcher.DispatchMessage(msg)
 	case bundleChar:
 		bun, err := parseBundle(data, senderAddress)
 		if err != nil {
 			return err
 		}
-		return dispatcher.DispatchBundle(bun)
+		// TODO: handle error.
+		go dispatcher.DispatchBundle(bun)
 	default:
 		return ErrParse
 	}
@@ -88,8 +90,8 @@ func (conn *UDPConn) serve(dispatcher Dispatcher) error {
 }
 
 // Send sends an OSC message over UDP.
-func (conn *UDPConn) Send(msg *Message) error {
-	contents, err := msg.Contents()
+func (conn *UDPConn) Send(p Packet) error {
+	contents, err := p.Contents()
 	if err != nil {
 		return err
 	}

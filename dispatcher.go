@@ -13,8 +13,8 @@ type Method func(msg *Message) error
 type Dispatcher map[string]Method
 
 // DispatchMessage dispatches OSC message.
-func (disp Dispatcher) DispatchMessage(msg *Message) error {
-	for address, method := range disp {
+func (d Dispatcher) DispatchMessage(msg *Message) error {
+	for address, method := range d {
 		matched, err := msg.Match(address)
 		if err != nil {
 			return err
@@ -27,9 +27,11 @@ func (disp Dispatcher) DispatchMessage(msg *Message) error {
 }
 
 // DispatchBundle dispatches an OSC bundle.
-func (disp Dispatcher) DispatchBundle(bun *Bundle) error {
-	for address, method := range disp {
-		bun.Invoke(address, method)
+func (d Dispatcher) DispatchBundle(bun *Bundle) error {
+	for address, method := range d {
+		if err := bun.Invoke(address, method); err != nil {
+			return err
+		}
 	}
 	return nil
 }

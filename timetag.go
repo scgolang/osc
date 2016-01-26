@@ -23,22 +23,18 @@ const (
 // specify the number of seconds since midnight on January 1, 1900, and the
 // last 32 bits specify fractional parts of a second to a precision of about
 // 200 picoseconds. This is the representation used by Internet NTP timestamps.
-type Timetag uint64
-
-// NewTimetag returns a new OSC timetag object.
-func NewTimetag(t time.Time) Timetag {
-	return timeToTimetag(t)
-}
-
-// timeToTimetag converts the given time to an OSC timetag.
-// An OSC timetag is defined as follows:
-// Time tags are represented by a 64 bit fixed point number. The first 32 bits
-// specify the number of seconds since midnight on January 1, 1900, and the
-// last 32 bits specify fractional parts of a second to a precision of about
-// 200 picoseconds. This is the representation used by Internet NTP timestamps.
 // The time tag value consisting of 63 zero bits followed by a one in the least
 // signifigant bit is a special case meaning "immediately."
-func timeToTimetag(t time.Time) Timetag {
+type Timetag uint64
+
+// Time converts an OSC timetag to a time.Time.
+func (tt Timetag) Time() time.Time {
+	secs := (int64(tt) >> 32) - secondsFrom1900To1970
+	return time.Unix(secs, int64(tt)&0xFFFFFFFF)
+}
+
+// FromTime converts the given time to an OSC timetag.
+func FromTime(t time.Time) Timetag {
 	secs := uint64((secondsFrom1900To1970 + t.Unix()) << 32)
 	return Timetag(secs + uint64(uint32(t.Nanosecond())))
 }
