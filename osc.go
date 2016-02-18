@@ -4,7 +4,7 @@ import "encoding/binary"
 
 const (
 	// The time tag value consisting of 63 zero bits followed by a one in the
-	// least signifigant bit is a special case meaning "immediately."
+	// least significant bit is a special case meaning "immediately."
 	timeTagImmediate      = uint64(1)
 	secondsFrom1900To1970 = 2208988800
 	bundleTag             = "#bundle"

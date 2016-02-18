@@ -24,7 +24,7 @@ const (
 // last 32 bits specify fractional parts of a second to a precision of about
 // 200 picoseconds. This is the representation used by Internet NTP timestamps.
 // The time tag value consisting of 63 zero bits followed by a one in the least
-// signifigant bit is a special case meaning "immediately."
+// significant bit is a special case meaning "immediately."
 type Timetag uint64
 
 // Time converts an OSC timetag to a time.Time.
