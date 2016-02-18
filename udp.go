@@ -53,6 +53,7 @@ func (conn *UDPConn) Serve(dispatcher Dispatcher) error {
 		if err := conn.serve(dispatcher); err != nil {
 			return err
 		}
+		break
 	}
 
 	return nil
