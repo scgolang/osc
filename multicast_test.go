@@ -22,15 +22,18 @@ func TestMulticastSend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer server1.Close()
+	defer func() { _ = server1.Close() }() // Best effort.
 
 	server2, err := ListenMulticastUDP("udp", ifi, gaddr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer server2.Close()
+	defer func() { _ = server2.Close() }() // Best effort.
 
-	errChan, wg := make(chan error), &sync.WaitGroup{}
+	var (
+		errChan = make(chan error)
+		wg      = &sync.WaitGroup{}
+	)
 
 	wg.Add(2)
 
