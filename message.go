@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+// Common errors.
 var (
 	ErrIndexOutOfBounds = errors.New("index out of bounds")
 	ErrInvalidTypeTag   = errors.New("invalid type tag")
@@ -214,7 +215,7 @@ func (msg *Message) Sender() net.Addr {
 	return msg.senderAddress
 }
 
-// Returns true, if the address of the OSC Message matches the given address.
+// Match returns true, if the address of the OSC Message matches the given address.
 // Case sensitive!
 func (msg *Message) Match(address string) (bool, error) {
 	addr := string(msg.address)
@@ -240,11 +241,11 @@ func (msg *Message) Contents() ([]byte, error) {
 	)
 
 	// Write address
-	if bw, err := w.Write(append(msg.address, 0)); err != nil {
+	bw, err := w.Write(append(msg.address, 0))
+	if err != nil {
 		return nil, err
-	} else {
-		bytesWritten += int64(bw)
 	}
+	bytesWritten += int64(bw)
 
 	// Write padding
 	for i := bytesWritten; i%4 != 0; i++ {
@@ -255,11 +256,11 @@ func (msg *Message) Contents() ([]byte, error) {
 	}
 
 	// Write typetag
-	if bw, err := w.Write(append(msg.typetag, 0)); err != nil {
+	bw, err = w.Write(append(msg.typetag, 0))
+	if err != nil {
 		return nil, err
-	} else {
-		bytesWritten += int64(bw)
 	}
+	bytesWritten += int64(bw)
 
 	// Write padding
 	for i := bytesWritten; i%4 != 0; i++ {

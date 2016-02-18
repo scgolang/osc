@@ -43,7 +43,7 @@ func (conn *UDPConn) Serve(dispatcher Dispatcher) error {
 		return ErrNilDispatcher
 	}
 
-	for addr, _ := range dispatcher {
+	for addr := range dispatcher {
 		if err := validateAddress(addr); err != nil {
 			return err
 		}

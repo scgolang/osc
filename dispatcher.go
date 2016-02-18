@@ -2,6 +2,7 @@ package osc
 
 import "errors"
 
+// Common errors.
 var (
 	ErrInvalidAddress = errors.New("invalid OSC address")
 )

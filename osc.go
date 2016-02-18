@@ -1,4 +1,3 @@
-// osc provides a package for sending and receiving OpenSoundControl messages.
 package osc
 
 import "encoding/binary"
@@ -8,7 +7,7 @@ const (
 	// least signifigant bit is a special case meaning "immediately."
 	timeTagImmediate      = uint64(1)
 	secondsFrom1900To1970 = 2208988800
-	BundleTag             = "#bundle"
+	bundleTag             = "#bundle"
 	messageChar           = '/'
 	bundleChar            = '#'
 	typetagPrefix         = ','

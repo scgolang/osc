@@ -46,11 +46,12 @@ func (b *Bundle) Contents() ([]byte, error) {
 	)
 
 	// Add the '#bundle' string
-	if bw, err := buf.Write(bundlePrefix); err != nil {
+	bw, err := buf.Write(bundlePrefix)
+	if err != nil {
 		return nil, err
-	} else {
-		bytesWritten += int64(bw)
 	}
+	bytesWritten += int64(bw)
+
 	for i := bytesWritten; i%4 != 0; i++ {
 		if err := buf.WriteByte(0); err != nil {
 			return nil, err
@@ -76,11 +77,11 @@ func (b *Bundle) Contents() ([]byte, error) {
 			return nil, err
 		}
 
-		if bw, err := buf.Write(contents); err != nil {
+		bw, err := buf.Write(contents)
+		if err != nil {
 			return nil, err
-		} else {
-			bytesWritten += int64(bw)
 		}
+		bytesWritten += int64(bw)
 	}
 
 	return buf.Bytes(), nil
@@ -170,7 +171,7 @@ ReadPackets:
 		default:
 			return nil, ErrParse
 		}
-		j += 1
+		j++
 		i += int(size)
 		r = bytes.NewReader(data[i:])
 	}
