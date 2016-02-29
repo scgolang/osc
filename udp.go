@@ -1,6 +1,10 @@
 package osc
 
-import "net"
+import (
+	"bytes"
+	"fmt"
+	"net"
+)
 
 // UDPConn is an OSC connection over UDP.
 type UDPConn struct {
@@ -61,43 +65,41 @@ func (conn *UDPConn) Serve(dispatcher Dispatcher) error {
 
 // serve retrieves OSC packets.
 func (conn *UDPConn) serve(dispatcher Dispatcher) error {
-	data := make([]byte, readBufSize)
-
-	_, senderAddress, err := conn.UDPConn.ReadFromUDP(data)
-	if err != nil {
-		return err
-	}
-
-	switch data[0] {
-	case messageChar:
-		msg, err := parseMessage(data, senderAddress)
+	buf := make([]byte, 65536)
+	for _, err := conn.Read(buf); true; _, err = conn.Read(buf) {
 		if err != nil {
 			return err
 		}
-		// TODO: handle error.
-		go dispatcher.DispatchMessage(msg)
-	case bundleChar:
-		bun, err := parseBundle(data, senderAddress)
-		if err != nil {
-			return err
+		switch buf[0] {
+		case messageChar:
+			msg, err := parseMessage(buf)
+			if err != nil {
+				fmt.Printf("========> error parsing message %s\n", err)
+				return err
+			}
+			go func() { _ = dispatcher.DispatchMessage(msg) }()
+		case bundleChar:
+			bundle, err := parseBundle(buf)
+			if err != nil {
+				return err
+			}
+			go func() { _ = dispatcher.DispatchBundle(bundle) }()
+		default:
+			return ErrParse
 		}
-		// TODO: handle error.
-		go dispatcher.DispatchBundle(bun)
-	default:
-		return ErrParse
 	}
-
 	return nil
 }
 
 // Send sends an OSC message over UDP.
-func (conn *UDPConn) Send(p Packet) error {
-	contents, err := p.Contents()
+func (conn *UDPConn) Send(p Packet) (int64, error) {
+	buf := &bytes.Buffer{}
+	if _, err := p.WriteTo(buf); err != nil {
+		return 0, err
+	}
+	n, err := conn.Write(buf.Bytes())
 	if err != nil {
-		return err
+		return 0, err
 	}
-	if _, err := conn.UDPConn.Write(contents); err != nil {
-		return err
-	}
-	return nil
+	return int64(n), nil
 }

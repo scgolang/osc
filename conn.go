@@ -6,17 +6,10 @@ import (
 	"strings"
 )
 
-const (
-	readBufSize = 4096
-)
-
 // Common errors.
 var (
-	errBundle         = errors.New("message is a bundle")
 	ErrNilDispatcher  = errors.New("nil dispatcher")
 	ErrPrematureClose = errors.New("server cannot be closed before calling Listen")
-	networkTCP        = "tcp"
-	networkUDP        = "udp"
 )
 
 // Conn defines the methods

@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"net"
+	"io"
 	"time"
 )
 
@@ -26,7 +26,6 @@ var (
 type Bundle struct {
 	Timetag Timetag
 	Packets []Packet
-	Sender  net.Addr
 }
 
 // NewBundle returns an OSC Bundle.
@@ -37,54 +36,50 @@ func NewBundle(t time.Time, packets ...Packet) *Bundle {
 	}
 }
 
-// Contents returns the contents of the bundle as a
-// slice of bytes.
-func (b *Bundle) Contents() ([]byte, error) {
-	var (
-		buf          = &bytes.Buffer{}
-		bytesWritten int64
-	)
-
+// WriteTo writes the bundle to w.
+func (b *Bundle) WriteTo(w io.Writer) (n int64, err error) {
 	// Add the '#bundle' string
-	bw, err := buf.Write(bundlePrefix)
+	nw, err := w.Write(bundlePrefix)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	bytesWritten += int64(bw)
+	n += int64(nw)
 
-	for i := bytesWritten; i%4 != 0; i++ {
-		if err := buf.WriteByte(0); err != nil {
-			return nil, err
+	for i := n; i%4 != 0; i++ {
+		if _, err := w.Write([]byte{0}); err != nil {
+			return 0, err
 		}
-		bytesWritten++
+		n++
 	}
 
 	// Add the timetag
-	if err := binary.Write(buf, byteOrder, b.Timetag); err != nil {
-		return nil, err
+	if err := binary.Write(w, byteOrder, b.Timetag); err != nil {
+		return 0, err
 	}
-	bytesWritten += 8
+	n += 8
 
 	// Process all OSC Messages
 	for _, p := range b.Packets {
-		contents, err := p.Contents()
+		// TODO: would be nice to be able to get the length
+		buf := &bytes.Buffer{}
+		nw64, err := p.WriteTo(buf)
 		if err != nil {
-			return nil, err
+			return 0, err
 		}
 
-		size := int32(len(contents))
-		if err := binary.Write(buf, byteOrder, size); err != nil {
-			return nil, err
+		size := int32(nw64)
+		if err := binary.Write(w, byteOrder, size); err != nil {
+			return 0, err
 		}
 
-		bw, err := buf.Write(contents)
+		nw, err := w.Write(buf.Bytes())
 		if err != nil {
-			return nil, err
+			return 0, err
 		}
-		bytesWritten += int64(bw)
+		n += int64(nw)
 	}
 
-	return buf.Bytes(), nil
+	return n, nil
 }
 
 // Invoke invokes an OSC method for each element of a
@@ -99,7 +94,7 @@ func (b *Bundle) Invoke(address string, method Method) error {
 	}
 
 	for _, p := range b.Packets {
-		if msg, ok := p.(*Message); ok {
+		if msg, ok := p.(*Message); !ok {
 			matched, err := msg.Match(address)
 			if err != nil {
 				return err
@@ -124,10 +119,10 @@ func (b *Bundle) Invoke(address string, method Method) error {
 }
 
 // parseBundle parses an OSC bundle from a slice of bytes.
-func parseBundle(data []byte, sender net.Addr) (*Bundle, error) {
+func parseBundle(data []byte) (*Bundle, error) {
 	var (
 		i = 0
-		b = &Bundle{Sender: sender}
+		b = &Bundle{}
 	)
 	if len(data) < len(bundlePrefix) {
 		return nil, fmt.Errorf("invalid bundle: %q", data)
@@ -155,13 +150,13 @@ ReadPackets:
 		i += 4
 		switch data[i] {
 		case messageChar:
-			pkt, err := parseMessage(data[i:], sender)
+			pkt, err := parseMessage(data[i:])
 			if err != nil {
 				return nil, err
 			}
 			b.Packets = append(b.Packets, pkt)
 		case bundleChar:
-			pkt, err := parseBundle(data[i:], sender)
+			pkt, err := parseBundle(data[i:])
 			if err != nil {
 				return nil, err
 			}

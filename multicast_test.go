@@ -6,11 +6,15 @@ import (
 	"testing"
 )
 
-func TestMulticastSend(t *testing.T) {
-	const group = "224.10.10.1:9999"
+const group = "224.10.10.1:9999"
 
+type TestMulticastServer struct {
+	Conn *UDPConn
+}
+
+func newTestMulticastServer(t *testing.T, ifIndex int) (*TestMulticastServer, net.Addr) {
 	// BUG(briansorahan): How to reliably test multicast everywhere?
-	ifi, err := net.InterfaceByIndex(4)
+	ifi, err := net.InterfaceByIndex(ifIndex)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -18,27 +22,27 @@ func TestMulticastSend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server1, err := ListenMulticastUDP("udp", ifi, gaddr)
+	server, err := ListenMulticastUDP("udp", ifi, gaddr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = server1.Close() }() // Best effort.
+	return &TestMulticastServer{Conn: server}, gaddr
+}
 
-	server2, err := ListenMulticastUDP("udp", ifi, gaddr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = server2.Close() }() // Best effort.
-
+func TestMulticastSend(t *testing.T) {
 	var (
 		errChan = make(chan error)
 		wg      = &sync.WaitGroup{}
 	)
+	ts1, gaddr := newTestMulticastServer(t, 4)
+	ts2, _ := newTestMulticastServer(t, 4)
+	defer func() { _ = ts1.Conn.Close() }() // Best effort.
+	defer func() { _ = ts2.Conn.Close() }() // Best effort.
 
 	wg.Add(2)
 
 	go func() {
-		errChan <- server1.Serve(map[string]Method{
+		errChan <- ts1.Conn.Serve(map[string]Method{
 			"/mcast/method": func(msg *Message) error {
 				wg.Done()
 				return nil
@@ -47,7 +51,7 @@ func TestMulticastSend(t *testing.T) {
 	}()
 
 	go func() {
-		errChan <- server2.Serve(map[string]Method{
+		errChan <- ts2.Conn.Serve(map[string]Method{
 			"/mcast/method": func(msg *Message) error {
 				wg.Done()
 				return nil
@@ -55,17 +59,14 @@ func TestMulticastSend(t *testing.T) {
 		})
 	}()
 
-	client, err := DialUDP("udp", nil, gaddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	client := newTestClientUDP(t, gaddr)
 
 	msg, err := NewMessage("/mcast/method")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := client.Send(msg); err != nil {
+	if _, err := client.Conn.Send(msg); err != nil {
 		t.Fatal(err)
 	}
 

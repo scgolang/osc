@@ -1,7 +1,6 @@
 package osc
 
 import (
-	"bytes"
 	"net"
 	"testing"
 )
@@ -57,84 +56,53 @@ func TestMessageDispatching(t *testing.T) {
 }
 
 func TestSend(t *testing.T) {
-	var (
-		doneChan = make(chan *Message)
-		errChan  = make(chan error, 1)
-	)
+	ts := newTestServerUDP(t)
 
 	dispatcher := map[string]Method{
 		"/osc/address": func(msg *Message) error {
-			doneChan <- msg
+			ts.MsgChan <- msg
 			return nil
 		},
 	}
 
-	laddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	server, err := ListenUDP("udp", laddr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = server.Close() }() // Best effort.
+	defer func() { _ = ts.Close() }() // Best effort.
 
 	go func() {
-		errChan <- server.Serve(dispatcher) // Best effort.
+		ts.ErrChan <- ts.Conn.Serve(dispatcher) // Best effort.
 	}()
 
-	serverAddr := server.LocalAddr()
-	raddr, err := net.ResolveUDPAddr(serverAddr.Network(), serverAddr.String())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	client, err := DialUDP("udp", nil, raddr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	client := newTestClientUDP(t, ts.Conn.LocalAddr())
 
 	msg, err := NewMessage("/osc/address")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := msg.WriteInt32(111); err != nil {
+	if err := msg.WriteInt32(0, 111); err != nil {
 		t.Fatal(err)
 	}
-	if err := msg.WriteBool(true); err != nil {
+	if err := msg.WriteBool(1, true); err != nil {
 		t.Fatal(err)
 	}
-	if err := msg.WriteString("hello"); err != nil {
+	if err := msg.WriteString(2, "hello"); err != nil {
 		t.Fatal(err)
 	}
 
 	// Send a message.
-	if err := client.Send(msg); err != nil {
+	if _, err := client.Conn.Send(msg); err != nil {
 		t.Fatal(err)
 	}
 
 	select {
 	default:
-	case err := <-errChan:
+	case err := <-ts.ErrChan:
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	recvMsg := <-doneChan
+	recvMsg := <-ts.MsgChan
 
-	recvData, err := recvMsg.Contents()
-	if err != nil {
+	if err := msg.Compare(recvMsg); err != nil {
 		t.Fatal(err)
-	}
-
-	data, err := msg.Contents()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if 0 != bytes.Compare(data, recvData[0:len(data)]) {
-		t.Fatalf("Expected %s got %s", data, recvData)
 	}
 }
