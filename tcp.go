@@ -21,7 +21,7 @@ func ListenTCP(network string, laddr *net.TCPAddr) (*TCPListener, error) {
 }
 
 // Serve starts dispatching OSC.
-func (conn *TCPListener) Serve(dispatcher Dispatcher) error {
+func (listener *TCPListener) Serve(dispatcher Dispatcher) error {
 	if dispatcher == nil {
 		return ErrNilDispatcher
 	}
@@ -33,7 +33,7 @@ func (conn *TCPListener) Serve(dispatcher Dispatcher) error {
 	}
 
 	for {
-		if err := conn.serve(dispatcher); err != nil {
+		if err := listener.serve(dispatcher); err != nil {
 			return err
 		}
 		break
