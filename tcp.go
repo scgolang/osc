@@ -73,7 +73,6 @@ func (listener *TCPListener) serve(dispatcher Dispatcher) error {
 			}
 		}
 	}
-	return nil
 }
 
 // TCPConn is an OSC connection over TCP.
