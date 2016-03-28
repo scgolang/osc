@@ -77,7 +77,13 @@ func TestSend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := msg.WriteBlob(0, []byte(`I think that I should never see an OSC server as lovely as a tree.`)); err != nil {
+	if err := msg.WriteInt32(0, 111); err != nil {
+		t.Fatal(err)
+	}
+	if err := msg.WriteBool(1, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := msg.WriteString(2, "hello"); err != nil {
 		t.Fatal(err)
 	}
 

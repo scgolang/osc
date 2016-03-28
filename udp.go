@@ -65,7 +65,7 @@ func (conn *UDPConn) Serve(dispatcher Dispatcher) error {
 
 // serve retrieves OSC packets.
 func (conn *UDPConn) serve(dispatcher Dispatcher) error {
-	buf := make([]byte, 512)
+	buf := make([]byte, 65536)
 	for _, err := conn.Read(buf); true; _, err = conn.Read(buf) {
 		if err != nil {
 			return err

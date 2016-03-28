@@ -1,7 +1,6 @@
 package osc
 
 import (
-	"encoding/binary"
 	"io"
 )
 
@@ -40,12 +39,6 @@ func (msg *Message) writeArgs(w io.Writer) (n int64, err error) {
 		arg := msg.Args[i]
 		if arg == nil {
 			continue
-		}
-		// Write blob length.
-		if tt == typetagBlob {
-			if err := binary.Write(w, byteOrder, int32(len(msg.Args[i]))); err != nil {
-				return 0, err
-			}
 		}
 		nw, err := w.Write(arg)
 		if err != nil {

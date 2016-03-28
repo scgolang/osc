@@ -30,8 +30,6 @@ func newTestMulticastServer(t *testing.T, ifIndex int) (*TestMulticastServer, ne
 }
 
 func TestMulticastSend(t *testing.T) {
-	t.SkipNow()
-
 	var (
 		errChan = make(chan error)
 		wg      = &sync.WaitGroup{}
