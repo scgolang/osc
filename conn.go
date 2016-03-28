@@ -16,7 +16,7 @@ var (
 type Conn interface {
 	net.Conn
 	Serve(Dispatcher) error
-	Send(Packet) (int64, error)
+	Send(Packet) error
 }
 
 var invalidAddressRunes = []rune{'*', '?', ',', '[', ']', '{', '}', '#', ' '}
