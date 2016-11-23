@@ -154,13 +154,13 @@ ReadPackets:
 	for err := binary.Read(r, byteOrder, &size); err == nil; err = binary.Read(r, byteOrder, &size) {
 		i += 4
 		switch data[i] {
-		case messageChar:
+		case MessageChar:
 			pkt, err := parseMessage(data[i:], sender)
 			if err != nil {
 				return nil, err
 			}
 			b.Packets = append(b.Packets, pkt)
-		case bundleChar:
+		case BundleTag[0]:
 			pkt, err := parseBundle(data[i:], sender)
 			if err != nil {
 				return nil, err

@@ -69,14 +69,14 @@ func (conn *UDPConn) serve(dispatcher Dispatcher) error {
 	}
 
 	switch data[0] {
-	case messageChar:
+	case MessageChar:
 		msg, err := parseMessage(data, senderAddress)
 		if err != nil {
 			return err
 		}
 		// TODO: handle error.
 		go dispatcher.DispatchMessage(msg)
-	case bundleChar:
+	case BundleTag[0]:
 		bun, err := parseBundle(data, senderAddress)
 		if err != nil {
 			return err

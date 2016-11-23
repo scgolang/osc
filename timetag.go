@@ -29,13 +29,13 @@ type Timetag uint64
 
 // Time converts an OSC timetag to a time.Time.
 func (tt Timetag) Time() time.Time {
-	secs := (int64(tt) >> 32) - secondsFrom1900To1970
+	secs := (int64(tt) >> 32) - SecondsFrom1900To1970
 	return time.Unix(secs, int64(tt)&0xFFFFFFFF)
 }
 
 // FromTime converts the given time to an OSC timetag.
 func FromTime(t time.Time) Timetag {
-	secs := uint64((secondsFrom1900To1970 + t.Unix()) << 32)
+	secs := uint64((SecondsFrom1900To1970 + t.Unix()) << 32)
 	return Timetag(secs + uint64(uint32(t.Nanosecond())))
 }
 
