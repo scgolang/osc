@@ -101,3 +101,15 @@ func (conn *UDPConn) Send(p Packet) error {
 	}
 	return nil
 }
+
+// SendTo sends a packet to the given address.
+func (conn *UDPConn) SendTo(addr net.Addr, p Packet) error {
+	contents, err := p.Contents()
+	if err != nil {
+		return err
+	}
+	if _, err := conn.UDPConn.WriteTo(contents, addr); err != nil {
+		return err
+	}
+	return nil
+}
