@@ -13,6 +13,7 @@ import (
 type Argument interface {
 	io.WriterTo
 
+	Equal(Argument) bool
 	ReadInt32() (int32, error)
 	ReadFloat32() (float32, error)
 	ReadBool() (bool, error)
@@ -23,6 +24,15 @@ type Argument interface {
 
 // Int represents a 32-bit integer.
 type Int int32
+
+// Equal returns true if the argument equals the other one, false otherwise.
+func (i Int) Equal(other Argument) bool {
+	if other.Typetag() != TypetagInt {
+		return false
+	}
+	i2 := other.(Int)
+	return i == i2
+}
 
 // ReadInt32 reads a 32-bit integer from the arg.
 func (i Int) ReadInt32() (int32, error) { return int32(i), nil }
@@ -51,6 +61,15 @@ func (i Int) WriteTo(w io.Writer) (int64, error) {
 // Float represents a 32-bit float.
 type Float float32
 
+// Equal returns true if the argument equals the other one, false otherwise.
+func (f Float) Equal(other Argument) bool {
+	if other.Typetag() != TypetagFloat {
+		return false
+	}
+	f2 := other.(Float)
+	return f == f2
+}
+
 // ReadInt32 reads a 32-bit integer from the arg.
 func (f Float) ReadInt32() (int32, error) { return 0, ErrInvalidTypeTag }
 
@@ -77,6 +96,15 @@ func (f Float) WriteTo(w io.Writer) (int64, error) {
 
 // Bool represents a boolean value.
 type Bool bool
+
+// Equal returns true if the argument equals the other one, false otherwise.
+func (b Bool) Equal(other Argument) bool {
+	if other.Typetag() != TypetagFalse && other.Typetag() != TypetagTrue {
+		return false
+	}
+	b2 := other.(Bool)
+	return b == b2
+}
 
 // ReadInt32 reads a 32-bit integer from the arg.
 func (b Bool) ReadInt32() (int32, error) { return 0, ErrInvalidTypeTag }
@@ -110,6 +138,15 @@ func (b Bool) WriteTo(w io.Writer) (int64, error) {
 // String is a string.
 type String string
 
+// Equal returns true if the argument equals the other one, false otherwise.
+func (s String) Equal(other Argument) bool {
+	if other.Typetag() != TypetagString {
+		return false
+	}
+	s2 := other.(String)
+	return s == s2
+}
+
 // ReadInt32 reads a 32-bit integer from the arg.
 func (s String) ReadInt32() (int32, error) { return 0, ErrInvalidTypeTag }
 
@@ -136,6 +173,17 @@ func (s String) WriteTo(w io.Writer) (int64, error) {
 
 // Blob is a slice of bytes.
 type Blob []byte
+
+func (b Blob) Equal(other Argument) bool {
+	if other.Typetag() != TypetagBlob {
+		return false
+	}
+	b2 := other.(Blob)
+	if len(b) != len(b2) {
+		return false
+	}
+	return bytes.Equal(b, b2)
+}
 
 // ReadInt32 reads a 32-bit integer from the arg.
 func (b Blob) ReadInt32() (int32, error) { return 0, ErrInvalidTypeTag }
@@ -166,15 +214,11 @@ func ParseArgument(tt byte, data []byte) (Argument, int64, error) {
 	switch tt {
 	case TypetagInt:
 		var val int32
-		if err := binary.Read(bytes.NewReader(data), byteOrder, &val); err != nil {
-			return nil, 0, err
-		}
+		_ = binary.Read(bytes.NewReader(data), byteOrder, &val) // Never fails
 		return Int(val), 4, nil
 	case TypetagFloat:
 		var val float32
-		if err := binary.Read(bytes.NewReader(data), byteOrder, &val); err != nil {
-			return nil, 0, err
-		}
+		_ = binary.Read(bytes.NewReader(data), byteOrder, &val) // Never fails
 		return Float(val), 4, nil
 	case TypetagTrue:
 		return Bool(true), 0, nil
@@ -188,9 +232,9 @@ func ParseArgument(tt byte, data []byte) (Argument, int64, error) {
 		if err := binary.Read(bytes.NewReader(data), byteOrder, &length); err != nil {
 			return nil, 0, err
 		}
-		b, bl := ReadBlob(length, data)
-		return Blob(b), bl, nil
+		b, bl := ReadBlob(length, data[4:])
+		return Blob(b), bl + 4, nil
 	default:
-		return nil, 0, fmt.Errorf("unrecognized type tag: %c", tt)
+		return nil, 0, ErrInvalidTypeTag
 	}
 }

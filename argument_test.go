@@ -2,6 +2,7 @@ package osc
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"testing"
 )
@@ -158,4 +159,92 @@ func TestBlob(t *testing.T) {
 }
 
 func TestParseArgument(t *testing.T) {
+	type Input struct {
+		tt   byte
+		data []byte
+	}
+	type Output struct {
+		Argument Argument
+		Consumed int64 // number of bytes consumed
+		Err      error
+	}
+	for _, testcase := range []struct {
+		Input    Input
+		Expected Output
+	}{
+		{
+			Input: Input{
+				tt:   'i',
+				data: []byte{0, 0, 0, 1},
+			},
+			Expected: Output{
+				Argument: Int(1),
+				Consumed: 4,
+			},
+		},
+		{
+			Input: Input{
+				tt:   'f',
+				data: []byte{0x40, 0x48, 0xf5, 0xc3},
+			},
+			Expected: Output{
+				Argument: Float(3.14),
+				Consumed: 4,
+			},
+		},
+		{
+			Input: Input{tt: 'T'},
+			Expected: Output{
+				Argument: Bool(true),
+			},
+		},
+		{
+			Input: Input{tt: 'F'},
+			Expected: Output{
+				Argument: Bool(false),
+			},
+		},
+		{
+			Input: Input{
+				tt:   's',
+				data: []byte{'a', 'b', 'c', 'd', 'e'},
+			},
+			Expected: Output{
+				Argument: String("abcde"),
+				Consumed: 8,
+			},
+		},
+		{
+			Input: Input{
+				tt: 'b',
+				// Length followed by blob
+				data: []byte{0, 0, 0, 5, 'a', 'b', 'c', 'd', 'e'},
+			},
+			Expected: Output{
+				Argument: Blob([]byte{'a', 'b', 'c', 'd', 'e', 0, 0, 0}),
+				Consumed: 12,
+			},
+		},
+		{
+			Input:    Input{tt: 'b', data: []byte{}},
+			Expected: Output{Err: io.EOF},
+		},
+		{
+			Input:    Input{tt: 'Q'},
+			Expected: Output{Err: ErrInvalidTypeTag},
+		},
+	} {
+		a, consumed, err := ParseArgument(testcase.Input.tt, testcase.Input.data)
+		if expected, got := testcase.Expected.Err, err; expected != got {
+			t.Fatalf("expected %s, got %s", expected, got)
+		}
+		if testcase.Expected.Err == nil {
+			if expected, got := testcase.Expected.Consumed, consumed; expected != got {
+				t.Fatalf("expected %d, got %d", expected, got)
+			}
+			if expected, got := testcase.Expected.Argument, a; !expected.Equal(got) {
+				t.Fatalf("expected %+v, got %+v", expected, got)
+			}
+		}
+	}
 }
