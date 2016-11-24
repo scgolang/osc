@@ -2,11 +2,13 @@ package osc
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"net"
+	"regexp"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 // Common errors.
@@ -34,11 +36,11 @@ func NewMessage(addr string) (*Message, error) {
 
 // Match returns true if the address of the OSC Message matches the given address.
 func (msg Message) Match(address string) (bool, error) {
-	// verify same number of parts
-	if !verifyParts(address, msg.Address) {
+	// Verify same number of parts.
+	if !VerifyParts(address, msg.Address) {
 		return false, nil
 	}
-	exp, err := getRegex(msg.Address)
+	exp, err := GetRegex(msg.Address)
 	if err != nil {
 		return false, err
 	}
@@ -114,10 +116,24 @@ func ParseMessage(data []byte, sender net.Addr) (*Message, error) {
 	return msg, nil
 }
 
-// verifyParts verifies that m1 and m2 have the same number of parts,
+// GetRegex compiles and returns a regular expression object for the given address pattern.
+func GetRegex(pattern string) (*regexp.Regexp, error) {
+	pattern = strings.Replace(pattern, ".", "\\.", -1) // Escape all '.' in the pattern
+	pattern = strings.Replace(pattern, "(", "\\(", -1) // Escape all '(' in the pattern
+	pattern = strings.Replace(pattern, ")", "\\)", -1) // Escape all ')' in the pattern
+	pattern = strings.Replace(pattern, "*", ".*", -1)  // Replace a '*' with '.*' that matches zero or more characters
+	pattern = strings.Replace(pattern, "{", "(", -1)   // Change a '{' to '('
+	pattern = strings.Replace(pattern, ",", "|", -1)   // Change a ',' to '|'
+	pattern = strings.Replace(pattern, "}", ")", -1)   // Change a '}' to ')'
+	pattern = strings.Replace(pattern, "?", ".", -1)   // Change a '?' to '.'
+	pattern = "^" + pattern + "$"
+	return regexp.Compile(pattern)
+}
+
+// VerifyParts verifies that m1 and m2 have the same number of parts,
 // where a part is a nonempty string between pairs of '/' or a nonempty
 // string at the end.
-func verifyParts(m1, m2 string) bool {
+func VerifyParts(m1, m2 string) bool {
 	if m1 == m2 {
 		return true
 	}
@@ -129,7 +145,6 @@ func verifyParts(m1, m2 string) bool {
 		return false
 	}
 	for i, p := range p1[1:] {
-		// fmt.Printf("len(p) %d len(p2[i+1]) %d", len(p), len(p2[i+1]))
 		if len(p) == 0 || len(p2[i+1]) == 0 {
 			return false
 		}
