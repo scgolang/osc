@@ -29,7 +29,9 @@ type Conn interface {
 
 var invalidAddressRunes = []rune{'*', '?', ',', '[', ']', '{', '}', '#', ' '}
 
-func validateAddress(addr string) error {
+// ValidateAddress returns an error if addr contains
+// characters that are disallowed by the OSC spec.
+func ValidateAddress(addr string) error {
 	for _, chr := range invalidAddressRunes {
 		if strings.ContainsRune(addr, chr) {
 			return ErrInvalidAddress

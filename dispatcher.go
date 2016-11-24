@@ -26,13 +26,3 @@ func (d Dispatcher) DispatchMessage(msg *Message) error {
 	}
 	return nil
 }
-
-// DispatchBundle dispatches an OSC bundle.
-func (d Dispatcher) DispatchBundle(bun *Bundle) error {
-	for address, method := range d {
-		if err := bun.Invoke(address, method); err != nil {
-			return err
-		}
-	}
-	return nil
-}

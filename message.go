@@ -39,7 +39,6 @@ func (msg *Message) Match(address string) (bool, error) {
 	if !verifyParts(address, msg.Address) {
 		return false, nil
 	}
-
 	exp, err := getRegex(msg.Address)
 	if err != nil {
 		return false, err
@@ -133,10 +132,10 @@ func verifyParts(m1, m2 string) bool {
 		return false
 	}
 	for i, p := range p1[1:] {
+		// fmt.Printf("len(p) %d len(p2[i+1]) %d", len(p), len(p2[i+1]))
 		if len(p) == 0 || len(p2[i+1]) == 0 {
 			return false
 		}
 	}
-
 	return true
 }

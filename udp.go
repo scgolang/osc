@@ -44,7 +44,7 @@ func (conn *UDPConn) Serve(dispatcher Dispatcher) error {
 	}
 
 	for addr := range dispatcher {
-		if err := validateAddress(addr); err != nil {
+		if err := ValidateAddress(addr); err != nil {
 			return err
 		}
 	}
@@ -69,6 +69,7 @@ func (conn *UDPConn) serve(dispatcher Dispatcher) error {
 	}
 
 	switch data[0] {
+	// TODO: handle bundle
 	case MessageChar:
 		msg, err := parseMessage(data, senderAddress)
 		if err != nil {
@@ -76,13 +77,6 @@ func (conn *UDPConn) serve(dispatcher Dispatcher) error {
 		}
 		// TODO: handle error.
 		go dispatcher.DispatchMessage(msg)
-	case BundleTag[0]:
-		bun, err := parseBundle(data, senderAddress)
-		if err != nil {
-			return err
-		}
-		// TODO: handle error.
-		go dispatcher.DispatchBundle(bun)
 	default:
 		return ErrParse
 	}

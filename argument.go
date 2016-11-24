@@ -2,6 +2,7 @@ package osc
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -19,6 +20,7 @@ type Argument interface {
 	ReadBool() (bool, error)
 	ReadString() (string, error)
 	ReadBlob() ([]byte, error)
+	String() string
 	Typetag() byte
 }
 
@@ -48,6 +50,9 @@ func (i Int) ReadString() (string, error) { return "", ErrInvalidTypeTag }
 
 // ReadBlob reads a slice of bytes from the arg.
 func (i Int) ReadBlob() ([]byte, error) { return nil, ErrInvalidTypeTag }
+
+// String converts the arg to a string.
+func (i Int) String() string { return fmt.Sprintf("Int(%d)", i) }
 
 // Typetag returns the argument's type tag.
 func (i Int) Typetag() byte { return TypetagInt }
@@ -85,6 +90,9 @@ func (f Float) ReadString() (string, error) { return "", ErrInvalidTypeTag }
 // ReadBlob reads a slice of bytes from the arg.
 func (f Float) ReadBlob() ([]byte, error) { return nil, ErrInvalidTypeTag }
 
+// String converts the arg to a string.
+func (f Float) String() string { return fmt.Sprintf("Float(%f)", f) }
+
 // Typetag returns the argument's type tag.
 func (f Float) Typetag() byte { return TypetagFloat }
 
@@ -120,6 +128,9 @@ func (b Bool) ReadString() (string, error) { return "", ErrInvalidTypeTag }
 
 // ReadBlob reads a slice of bytes from the arg.
 func (b Bool) ReadBlob() ([]byte, error) { return nil, ErrInvalidTypeTag }
+
+// String converts the arg to a string.
+func (b Bool) String() string { return fmt.Sprintf("Bool(%t)", b) }
 
 // Typetag returns the argument's type tag.
 func (b Bool) Typetag() byte {
@@ -162,6 +173,9 @@ func (s String) ReadString() (string, error) { return string(s), nil }
 // ReadBlob reads a slice of bytes from the arg.
 func (s String) ReadBlob() ([]byte, error) { return nil, ErrInvalidTypeTag }
 
+// String converts the arg to a string.
+func (s String) String() string { return string(s) }
+
 // Typetag returns the argument's type tag.
 func (s String) Typetag() byte { return TypetagString }
 
@@ -199,6 +213,9 @@ func (b Blob) ReadString() (string, error) { return "", ErrInvalidTypeTag }
 
 // ReadBlob reads a slice of bytes from the arg.
 func (b Blob) ReadBlob() ([]byte, error) { return []byte(b), nil }
+
+// String converts the arg to a string.
+func (b Blob) String() string { return base64.StdEncoding.EncodeToString([]byte(b)) }
 
 // Typetag returns the argument's type tag.
 func (b Blob) Typetag() byte { return TypetagBlob }
