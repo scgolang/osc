@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+
+	"github.com/pkg/errors"
 )
 
 // Argument represents an OSC argument.
@@ -22,6 +24,55 @@ type Argument interface {
 	ReadBlob() ([]byte, error)
 	String() string
 	Typetag() byte
+}
+
+// ReadArguments reads all arguments from the reader and adds it to the OSC message.
+func ReadArguments(typetags, data []byte) ([]Argument, error) {
+	args := []Argument{}
+
+	for i, tt := range typetags {
+		arg, idx, err := ReadArgument(tt, data)
+		if err != nil {
+			return nil, errors.Wrapf(err, "read argument %d", i)
+		}
+		args = append(args, arg)
+		data = data[idx:]
+	}
+	return args, nil
+}
+
+// ReadArgument parses an OSC message argument given a type tag and some data.
+func ReadArgument(tt byte, data []byte) (Argument, int64, error) {
+	switch tt {
+	case TypetagInt:
+		var val int32
+		if err := binary.Read(bytes.NewReader(data), byteOrder, &val); err != nil {
+			return nil, 0, errors.Wrap(err, "read int argument")
+		}
+		return Int(val), 4, nil
+	case TypetagFloat:
+		var val float32
+		if err := binary.Read(bytes.NewReader(data), byteOrder, &val); err != nil {
+			return nil, 0, errors.Wrap(err, "read float argument")
+		}
+		return Float(val), 4, nil
+	case TypetagTrue:
+		return Bool(true), 0, nil
+	case TypetagFalse:
+		return Bool(false), 0, nil
+	case TypetagString:
+		s, idx := ReadString(data)
+		return String(s), idx, nil
+	case TypetagBlob:
+		var length int32
+		if err := binary.Read(bytes.NewReader(data), byteOrder, &length); err != nil {
+			return nil, 0, errors.Wrap(err, "read blob argument")
+		}
+		b, bl := ReadBlob(length, data[4:])
+		return Blob(b), bl + 4, nil
+	default:
+		return nil, 0, ErrInvalidTypeTag
+	}
 }
 
 // Int represents a 32-bit integer.
@@ -224,34 +275,4 @@ func (b Blob) Typetag() byte { return TypetagBlob }
 func (b Blob) WriteTo(w io.Writer) (int64, error) {
 	written, err := w.Write([]byte(b))
 	return int64(written), err
-}
-
-// ParseArgument parses an OSC message argument given a type tag and some data.
-func ParseArgument(tt byte, data []byte) (Argument, int64, error) {
-	switch tt {
-	case TypetagInt:
-		var val int32
-		_ = binary.Read(bytes.NewReader(data), byteOrder, &val) // Never fails
-		return Int(val), 4, nil
-	case TypetagFloat:
-		var val float32
-		_ = binary.Read(bytes.NewReader(data), byteOrder, &val) // Never fails
-		return Float(val), 4, nil
-	case TypetagTrue:
-		return Bool(true), 0, nil
-	case TypetagFalse:
-		return Bool(false), 0, nil
-	case TypetagString:
-		s, idx := ReadString(data)
-		return String(s), idx, nil
-	case TypetagBlob:
-		var length int32
-		if err := binary.Read(bytes.NewReader(data), byteOrder, &length); err != nil {
-			return nil, 0, err
-		}
-		b, bl := ReadBlob(length, data[4:])
-		return Blob(b), bl + 4, nil
-	default:
-		return nil, 0, ErrInvalidTypeTag
-	}
 }

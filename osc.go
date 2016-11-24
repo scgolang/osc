@@ -6,13 +6,6 @@ import (
 )
 
 const (
-	// TimeTagImmediate represents the time tag value consisting of
-	// 63 zero bits followed by a one in the least significant bit.
-	TimeTagImmediate = uint64(1)
-
-	// SecondsFrom1900To1970 is exactly what it sounds like.
-	SecondsFrom1900To1970 = 2208988800
-
 	// BundleTag is the tag on an OSC bundle message.
 	BundleTag = "#bundle"
 
@@ -41,7 +34,7 @@ var (
 // that comprise the contents. The size of an OSC packet
 // is always a multiple of 4.
 type Packet interface {
-	Contents() ([]byte, error)
+	Bytes() ([]byte, error)
 }
 
 // OscString returns an OSC representation of the given string.

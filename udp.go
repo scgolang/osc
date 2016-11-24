@@ -71,7 +71,7 @@ func (conn *UDPConn) serve(dispatcher Dispatcher) error {
 	switch data[0] {
 	// TODO: handle bundle
 	case MessageChar:
-		msg, err := parseMessage(data, senderAddress)
+		msg, err := ParseMessage(data, senderAddress)
 		if err != nil {
 			return err
 		}
@@ -86,11 +86,11 @@ func (conn *UDPConn) serve(dispatcher Dispatcher) error {
 
 // Send sends an OSC message over UDP.
 func (conn *UDPConn) Send(p Packet) error {
-	contents, err := p.Contents()
+	b, err := p.Bytes()
 	if err != nil {
 		return err
 	}
-	if _, err := conn.UDPConn.Write(contents); err != nil {
+	if _, err := conn.UDPConn.Write(b); err != nil {
 		return err
 	}
 	return nil
@@ -98,11 +98,11 @@ func (conn *UDPConn) Send(p Packet) error {
 
 // SendTo sends a packet to the given address.
 func (conn *UDPConn) SendTo(addr net.Addr, p Packet) error {
-	contents, err := p.Contents()
+	b, err := p.Bytes()
 	if err != nil {
 		return err
 	}
-	if _, err := conn.UDPConn.WriteTo(contents, addr); err != nil {
+	if _, err := conn.UDPConn.WriteTo(b, addr); err != nil {
 		return err
 	}
 	return nil

@@ -32,9 +32,8 @@ func NewMessage(addr string) (*Message, error) {
 	}, nil
 }
 
-// Match returns true, if the address of the OSC Message matches the given address.
-// Case sensitive!
-func (msg *Message) Match(address string) (bool, error) {
+// Match returns true if the address of the OSC Message matches the given address.
+func (msg Message) Match(address string) (bool, error) {
 	// verify same number of parts
 	if !verifyParts(address, msg.Address) {
 		return false, nil
@@ -46,8 +45,8 @@ func (msg *Message) Match(address string) (bool, error) {
 	return exp.MatchString(address), nil
 }
 
-// Contents returns the contents of the message as a slice of bytes.
-func (msg *Message) Contents() ([]byte, error) {
+// Bytes returns the contents of the message as a slice of bytes.
+func (msg Message) Bytes() ([]byte, error) {
 	w := &bytes.Buffer{}
 
 	// Write address
@@ -56,7 +55,7 @@ func (msg *Message) Contents() ([]byte, error) {
 	}
 
 	// Write the typetags.
-	if _, err := w.Write(msg.typetags()); err != nil {
+	if _, err := w.Write(msg.Typetags()); err != nil {
 		return nil, err
 	}
 
@@ -67,8 +66,8 @@ func (msg *Message) Contents() ([]byte, error) {
 	return w.Bytes(), nil
 }
 
-// typetags returns a padded byte slice of the message's type tags.
-func (msg *Message) typetags() []byte {
+// Typetags returns a padded byte slice of the message's type tags.
+func (msg Message) Typetags() []byte {
 	tt := make([]byte, len(msg.Arguments))
 	for i, a := range msg.Arguments {
 		tt[i] = a.Typetag()
@@ -77,8 +76,8 @@ func (msg *Message) typetags() []byte {
 }
 
 // WriteTo writes the Message to an io.Writer.
-func (msg *Message) Print(w io.Writer) error {
-	if _, err := fmt.Fprintf(w, "%s%s", msg.Address, msg.typetags()); err != nil {
+func (msg Message) Print(w io.Writer) error {
+	if _, err := fmt.Fprintf(w, "%s%s", msg.Address, msg.Typetags()); err != nil {
 		return err
 	}
 
@@ -91,30 +90,28 @@ func (msg *Message) Print(w io.Writer) error {
 	return nil
 }
 
-// parseMessage parses an OSC message from a slice of bytes.
-func parseMessage(data []byte, sender net.Addr) (*Message, error) {
+// ParseMessage parses an OSC message from a slice of bytes.
+func ParseMessage(data []byte, sender net.Addr) (*Message, error) {
 	address, idx := ReadString(data)
 	msg := &Message{
 		Address: address,
 		Sender:  sender,
 	}
 
-	// Read all arguments
-	if err := msg.parseArguments(data[idx:]); err != nil {
+	data = data[idx:]
+
+	typetags, idx := ReadString(data)
+
+	data = data[idx:]
+
+	// Read all arguments.
+	args, err := ReadArguments([]byte(typetags), data[idx:])
+	if err != nil {
 		return nil, err
 	}
+	msg.Arguments = args
 
 	return msg, nil
-}
-
-// parseArguments reads all arguments from the reader and adds it to the OSC message.
-func (msg *Message) parseArguments(data []byte) error {
-	if len(data) == 0 || data[0] != TypetagPrefix {
-		return ErrInvalidTypeTag
-	}
-	// tt, idx := readString(data[1:]) // strip the prefix
-
-	return nil
 }
 
 // verifyParts verifies that m1 and m2 have the same number of parts,
