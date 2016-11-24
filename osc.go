@@ -34,7 +34,7 @@ var (
 // that comprise the contents. The size of an OSC packet
 // is always a multiple of 4.
 type Packet interface {
-	Bytes() ([]byte, error)
+	Bytes() []byte
 }
 
 // OscString returns an OSC representation of the given string.

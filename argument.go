@@ -16,6 +16,7 @@ import (
 type Argument interface {
 	io.WriterTo
 
+	Bytes() []byte
 	Equal(Argument) bool
 	ReadInt32() (int32, error)
 	ReadFloat32() (float32, error)
@@ -78,6 +79,16 @@ func ReadArgument(tt byte, data []byte) (Argument, int64, error) {
 // Int represents a 32-bit integer.
 type Int int32
 
+// Bytes converts the arg to a byte slice suitable for adding to the binary representation of an OSC message.
+func (i Int) Bytes() []byte {
+	return []byte{
+		byte(int32(i) >> 24),
+		byte(int32(i) >> 16),
+		byte((int32(i) >> 8)),
+		byte(i),
+	}
+}
+
 // Equal returns true if the argument equals the other one, false otherwise.
 func (i Int) Equal(other Argument) bool {
 	if other.Typetag() != TypetagInt {
@@ -117,6 +128,15 @@ func (i Int) WriteTo(w io.Writer) (int64, error) {
 // Float represents a 32-bit float.
 type Float float32
 
+// Bytes converts the arg to a byte slice suitable for adding to the binary representation of an OSC message.
+func (f Float) Bytes() []byte {
+	var (
+		buf = &bytes.Buffer{}
+		_   = binary.Write(buf, byteOrder, float32(f)) // Never fails
+	)
+	return buf.Bytes()
+}
+
 // Equal returns true if the argument equals the other one, false otherwise.
 func (f Float) Equal(other Argument) bool {
 	if other.Typetag() != TypetagFloat {
@@ -155,6 +175,11 @@ func (f Float) WriteTo(w io.Writer) (int64, error) {
 
 // Bool represents a boolean value.
 type Bool bool
+
+// Bytes converts the arg to a byte slice suitable for adding to the binary representation of an OSC message.
+func (b Bool) Bytes() []byte {
+	return []byte{}
+}
 
 // Equal returns true if the argument equals the other one, false otherwise.
 func (b Bool) Equal(other Argument) bool {
@@ -200,6 +225,11 @@ func (b Bool) WriteTo(w io.Writer) (int64, error) {
 // String is a string.
 type String string
 
+// Bytes converts the arg to a byte slice suitable for adding to the binary representation of an OSC message.
+func (s String) Bytes() []byte {
+	return OscString(string(s))
+}
+
 // Equal returns true if the argument equals the other one, false otherwise.
 func (s String) Equal(other Argument) bool {
 	if other.Typetag() != TypetagString {
@@ -238,6 +268,14 @@ func (s String) WriteTo(w io.Writer) (int64, error) {
 
 // Blob is a slice of bytes.
 type Blob []byte
+
+// Bytes converts the arg to a byte slice suitable for adding to the binary representation of an OSC message.
+func (b Blob) Bytes() []byte {
+	return Pad(bytes.Join([][]byte{
+		Int(len(b)).Bytes(),
+		[]byte(b),
+	}, []byte{}))
+}
 
 func (b Blob) Equal(other Argument) bool {
 	if other.Typetag() != TypetagBlob {

@@ -1,6 +1,7 @@
 package osc
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -83,5 +84,33 @@ func TestMatch(t *testing.T) {
 func TestGetRegex(t *testing.T) {
 	if _, err := GetRegex(`[`); err == nil {
 		t.Fatalf("expected error, got nil")
+	}
+}
+
+func TestMesssageBytes(t *testing.T) {
+	for _, testcase := range []struct {
+		Message  Message
+		Expected []byte
+	}{
+		{
+			Message: Message{
+				Address:   "/foo",
+				Arguments: []Argument{Int(1), Blob([]byte("bar"))},
+			},
+			Expected: bytes.Join(
+				[][]byte{
+					[]byte{'/', 'f', 'o', 'o', 0, 0, 0, 0},
+					[]byte{TypetagPrefix, TypetagInt, TypetagBlob, 0},
+					[]byte{0, 0, 0, 1},
+					[]byte{0, 0, 0, 3, 'b', 'a', 'r', 0},
+				},
+				[]byte{},
+			),
+		},
+	} {
+		b := testcase.Message.Bytes()
+		if expected, got := testcase.Expected, b; !bytes.Equal(expected, got) {
+			t.Fatalf("expected %q, got %q", expected, got)
+		}
 	}
 }

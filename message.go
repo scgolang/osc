@@ -48,31 +48,23 @@ func (msg Message) Match(address string) (bool, error) {
 }
 
 // Bytes returns the contents of the message as a slice of bytes.
-func (msg Message) Bytes() ([]byte, error) {
-	w := &bytes.Buffer{}
-
-	// Write address
-	if _, err := w.Write(OscString(msg.Address)); err != nil {
-		return nil, err
+func (msg Message) Bytes() []byte {
+	b := [][]byte{
+		OscString(msg.Address),
+		msg.Typetags(),
 	}
-
-	// Write the typetags.
-	if _, err := w.Write(msg.Typetags()); err != nil {
-		return nil, err
+	for _, a := range msg.Arguments {
+		b = append(b, a.Bytes())
 	}
-
-	// Write arguments
-	// for _, a := range msg.Arguments {
-	// }
-
-	return w.Bytes(), nil
+	return bytes.Join(b, []byte{})
 }
 
 // Typetags returns a padded byte slice of the message's type tags.
 func (msg Message) Typetags() []byte {
-	tt := make([]byte, len(msg.Arguments))
+	tt := make([]byte, len(msg.Arguments)+1)
+	tt[0] = TypetagPrefix
 	for i, a := range msg.Arguments {
-		tt[i] = a.Typetag()
+		tt[i+1] = a.Typetag()
 	}
 	return Pad(tt)
 }

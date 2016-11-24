@@ -344,3 +344,23 @@ func TestReadArguments(t *testing.T) {
 		}
 	}
 }
+
+func TestIntBytes(t *testing.T) {
+	for _, testcase := range []struct {
+		Int      Int
+		Expected []byte
+	}{
+		{
+			Int:      Int(1),
+			Expected: []byte{0, 0, 0, 1},
+		},
+		{
+			Int:      Int(256),
+			Expected: []byte{0, 0, 1, 0},
+		},
+	} {
+		if expected, got := testcase.Expected, testcase.Int.Bytes(); !bytes.Equal(expected, got) {
+			t.Fatalf("expected %q, got %q", expected, got)
+		}
+	}
+}
