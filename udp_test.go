@@ -7,7 +7,7 @@ import (
 
 func TestInvalidAddress(t *testing.T) {
 	dispatcher := map[string]Method{
-		"/address*/test": func(msg *Message) error {
+		"/address*/test": func(msg Message) error {
 			return nil
 		},
 	}

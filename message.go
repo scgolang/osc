@@ -27,13 +27,6 @@ type Message struct {
 	Sender    net.Addr
 }
 
-// NewMessage creates a new OSC message.
-func NewMessage(addr string) (*Message, error) {
-	return &Message{
-		Address: addr,
-	}, nil
-}
-
 // Match returns true if the address of the OSC Message matches the given address.
 func (msg Message) Match(address string) (bool, error) {
 	// Verify same number of parts.
@@ -85,9 +78,9 @@ func (msg Message) Print(w io.Writer) error {
 }
 
 // ParseMessage parses an OSC message from a slice of bytes.
-func ParseMessage(data []byte, sender net.Addr) (*Message, error) {
+func ParseMessage(data []byte, sender net.Addr) (Message, error) {
 	address, idx := ReadString(data)
-	msg := &Message{
+	msg := Message{
 		Address: address,
 		Sender:  sender,
 	}
@@ -101,7 +94,7 @@ func ParseMessage(data []byte, sender net.Addr) (*Message, error) {
 	// Read all arguments.
 	args, err := ReadArguments([]byte(typetags), data[idx:])
 	if err != nil {
-		return nil, err
+		return Message{}, err
 	}
 	msg.Arguments = args
 
