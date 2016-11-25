@@ -31,6 +31,11 @@ type Argument interface {
 func ReadArguments(typetags, data []byte) ([]Argument, error) {
 	args := []Argument{}
 
+	// Strip off the prefix.
+	if len(typetags) > 0 && typetags[0] == TypetagPrefix {
+		typetags = typetags[1:]
+	}
+
 	for i, tt := range typetags {
 		arg, idx, err := ReadArgument(tt, data)
 		if err != nil {
@@ -72,7 +77,7 @@ func ReadArgument(tt byte, data []byte) (Argument, int64, error) {
 		b, bl := ReadBlob(length, data[4:])
 		return Blob(b), bl + 4, nil
 	default:
-		return nil, 0, ErrInvalidTypeTag
+		return nil, 0, errors.Wrapf(ErrInvalidTypeTag, "typetag %q", string(tt))
 	}
 }
 
@@ -227,7 +232,7 @@ type String string
 
 // Bytes converts the arg to a byte slice suitable for adding to the binary representation of an OSC message.
 func (s String) Bytes() []byte {
-	return OscString(string(s))
+	return ToBytes(string(s))
 }
 
 // Equal returns true if the argument equals the other one, false otherwise.
@@ -277,6 +282,7 @@ func (b Blob) Bytes() []byte {
 	}, []byte{}))
 }
 
+// Equal returns true if the argument equals the other one, false otherwise.
 func (b Blob) Equal(other Argument) bool {
 	if other.Typetag() != TypetagBlob {
 		return false
@@ -314,3 +320,6 @@ func (b Blob) WriteTo(w io.Writer) (int64, error) {
 	written, err := w.Write([]byte(b))
 	return int64(written), err
 }
+
+// Arguments is a slice of Argument.
+type Arguments []Argument

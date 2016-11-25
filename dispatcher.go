@@ -13,8 +13,8 @@ type Method func(msg Message) error
 // Dispatcher dispatches OSC packets.
 type Dispatcher map[string]Method
 
-// DispatchMessage dispatches OSC message.
-func (d Dispatcher) DispatchMessage(msg Message) error {
+// Dispatch dispatches OSC message.
+func (d Dispatcher) Dispatch(msg Message) error {
 	for address, method := range d {
 		matched, err := msg.Match(address)
 		if err != nil {

@@ -37,10 +37,10 @@ type Packet interface {
 	Bytes() []byte
 }
 
-// OscString returns an OSC representation of the given string.
+// ToBytes returns an OSC representation of the given string.
 // This means that the returned byte slice is padded with null bytes
 // so that it's length is a multiple of 4.
-func OscString(s string) []byte {
+func ToBytes(s string) []byte {
 	if len(s) == 0 {
 		return []byte{}
 	}
@@ -71,13 +71,11 @@ func ReadString(data []byte) (string, int64) {
 	}
 	nullidx := bytes.IndexByte(data, 0)
 	if nullidx == -1 {
-		// This should never happen!
 		data = append(data, 0)
-		nullidx = len(data)
+		nullidx = len(data) - 1
 	}
-	b, bl := ReadBlob(int32(nullidx), data)
-	nullidx = bytes.IndexByte(b, 0)
-	return string(b[:nullidx]), bl
+	data = Pad(data[:nullidx+1])
+	return string(bytes.TrimRight(data, "\x00")), int64(len(data))
 }
 
 // ReadBlob reads a blob of the given length from the given slice of bytes.
@@ -86,6 +84,7 @@ func ReadBlob(length int32, data []byte) ([]byte, int64) {
 	if length > int32(len(data)) {
 		l = int32(len(data))
 	}
+
 	var idx int32
 	for idx = l; (idx % 4) != 0; idx++ {
 		if idx >= int32(len(data)) {

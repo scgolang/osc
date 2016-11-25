@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestOscString(t *testing.T) {
+func TestToBytes(t *testing.T) {
 	for _, testcase := range []struct {
 		Input    string
 		Expected []byte
@@ -23,7 +23,7 @@ func TestOscString(t *testing.T) {
 			Expected: []byte{'a', 'b', 'c', 0},
 		},
 	} {
-		got := OscString(testcase.Input)
+		got := ToBytes(testcase.Input)
 		if expected := testcase.Expected; !bytes.Equal(expected, got) {
 			t.Fatalf("expected %q, got %q", expected, got)
 		}
@@ -82,6 +82,20 @@ func TestReadString(t *testing.T) {
 			Input: []byte("abc"),
 			Expected: Output{
 				String: "abc",
+				Length: 4,
+			},
+		},
+		{
+			Input: []byte("/foo\x00\x00\x00\x00,ib\x00\x00\x00\x00\x01\x00\x00\x00\x03bar\x00"),
+			Expected: Output{
+				String: "/foo",
+				Length: 8,
+			},
+		},
+		{
+			Input: []byte{',', 'Q'},
+			Expected: Output{
+				String: ",Q",
 				Length: 4,
 			},
 		},

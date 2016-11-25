@@ -2,10 +2,51 @@ package osc
 
 import (
 	"bytes"
+	"io/ioutil"
+	"net"
 	"testing"
+
+	"github.com/pkg/errors"
 )
 
-func TestWriteRead(t *testing.T) {
+func TestMessageEqual(t *testing.T) {
+	for _, testcase := range []struct {
+		M1       Message
+		M2       Message
+		Expected bool
+	}{
+		{
+			M1:       Message{Address: "/foo"},
+			M2:       Message{Address: "/foo"},
+			Expected: true,
+		},
+		{
+			M1:       Message{Address: "/foo"},
+			M2:       Message{Address: "/bar"},
+			Expected: false,
+		},
+		{
+			M1:       Message{Address: "/foo"},
+			M2:       Message{Address: "/foo", Arguments: []Argument{Int(32)}},
+			Expected: false,
+		},
+		{
+			M1:       Message{Address: "/foo", Arguments: []Argument{Int(31)}},
+			M2:       Message{Address: "/foo", Arguments: []Argument{Int(32)}},
+			Expected: false,
+		},
+	} {
+		m1, m2 := testcase.M1, testcase.M2
+		if testcase.Expected {
+			if !m1.Equal(m2) {
+				t.Fatalf("expected %s to equal %s", m1, m2)
+			}
+		} else {
+			if m1.Equal(m2) {
+				t.Fatalf("expected %s to not equal %s", m1, m2)
+			}
+		}
+	}
 }
 
 func TestVerifyParts(t *testing.T) {
@@ -102,6 +143,99 @@ func TestMesssageBytes(t *testing.T) {
 		b := testcase.Message.Bytes()
 		if expected, got := testcase.Expected, b; !bytes.Equal(expected, got) {
 			t.Fatalf("expected %q, got %q", expected, got)
+		}
+	}
+}
+
+type errWriter struct {
+	erridx int
+	curr   int
+}
+
+func (e *errWriter) Write(b []byte) (n int, err error) {
+	e.curr++
+	if e.curr == e.erridx {
+		return 0, errors.New("oops")
+	}
+	return 0, nil
+}
+
+func TestMessageWriteTo(t *testing.T) {
+	var (
+		msg = Message{Address: "/foo", Arguments: []Argument{String("bar")}}
+		e1  = &errWriter{erridx: 1}
+		e2  = &errWriter{erridx: 2}
+	)
+	if err := msg.WriteTo(e1); err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if err := msg.WriteTo(e2); err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if err := msg.WriteTo(ioutil.Discard); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestParseMessage(t *testing.T) {
+	type Input struct {
+		data   []byte
+		sender net.Addr
+	}
+	type Output struct {
+		Message Message
+		Err     error
+	}
+	for i, testcase := range []struct {
+		Input    Input
+		Expected Output
+	}{
+		{
+			Input: Input{
+				data: bytes.Join(
+					[][]byte{
+						[]byte{'/', 'f', 'o', 'o', 0, 0, 0, 0},
+						[]byte{TypetagPrefix, TypetagInt, TypetagBlob, 0},
+						[]byte{0, 0, 0, 1},
+						[]byte{0, 0, 0, 3, 'b', 'a', 'r', 0},
+					},
+					[]byte{},
+				),
+			},
+			Expected: Output{
+				Message: Message{
+					Address: "/foo",
+					Arguments: []Argument{
+						Int(1),
+						Blob([]byte{'b', 'a', 'r', 0}),
+					},
+				},
+			},
+		},
+		{
+			Input: Input{
+				data: bytes.Join(
+					[][]byte{
+						[]byte{'/', 'f', 'o', 'o', 0, 0, 0, 0},
+						[]byte{TypetagPrefix, 'Q', 0, 0},
+						// []byte{0, 0, 0, 1},
+						// []byte{0, 0, 0, 3, 'b', 'a', 'r', 0},
+					},
+					[]byte{},
+				),
+			},
+			Expected: Output{Err: errors.New(`read argument 0: typetag "Q": invalid typetag`)},
+		},
+	} {
+		msg, err := ParseMessage(testcase.Input.data, testcase.Input.sender)
+		if testcase.Expected.Err == nil {
+			if err != nil {
+				t.Fatalf("(testcase %d) %s", i, err)
+			}
+			if expected, got := testcase.Expected.Message, msg; !expected.Equal(got) {
+				t.Fatalf("(testcase %d) expected %s, got %s", i, expected, got)
+			}
+		} else {
 		}
 	}
 }

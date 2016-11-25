@@ -52,9 +52,8 @@ func TestInt(t *testing.T) {
 
 func TestFloat(t *testing.T) {
 	arg := Float(0)
-	f, err := arg.ReadFloat32()
-	if err != nil {
-		t.Fatal(err)
+	if expected, got := []byte{0x40, 0x48, 0xf5, 0xc3}, Float(3.14).Bytes(); !bytes.Equal(expected, got) {
+		t.Fatalf("expected %x, got %x", expected, got)
 	}
 	if other := Float(0); !arg.Equal(other) {
 		t.Fatal("expected %s to equal %s", arg, other)
@@ -65,9 +64,15 @@ func TestFloat(t *testing.T) {
 	if other := String("foo"); arg.Equal(other) {
 		t.Fatal("expected %s to not equal %s", arg, other)
 	}
+
+	f, err := arg.ReadFloat32()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if expected, got := float32(0), f; expected != got {
 		t.Fatalf("expected %f, got %f", expected, got)
 	}
+
 	if _, err := arg.ReadInt32(); err != ErrInvalidTypeTag {
 		t.Fatalf("expected ErrInvalidTypeTag, got %+v", err)
 	}
@@ -93,9 +98,8 @@ func TestFloat(t *testing.T) {
 
 func TestBool(t *testing.T) {
 	arg := Bool(false)
-	b, err := arg.ReadBool()
-	if err != nil {
-		t.Fatal(err)
+	if expected, got := []byte{}, arg.Bytes(); !bytes.Equal(expected, got) {
+		t.Fatalf("expected %x, got %x", expected, got)
 	}
 	if other := Bool(false); !arg.Equal(other) {
 		t.Fatal("expected %s to equal %s", arg, other)
@@ -103,9 +107,15 @@ func TestBool(t *testing.T) {
 	if other := Int(3); arg.Equal(other) {
 		t.Fatal("expected %s to not equal %s", arg, other)
 	}
+
+	b, err := arg.ReadBool()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if expected, got := false, b; expected != got {
 		t.Fatalf("expected %f, got %f", expected, got)
 	}
+
 	if _, err := arg.ReadInt32(); err != ErrInvalidTypeTag {
 		t.Fatalf("expected ErrInvalidTypeTag, got %+v", err)
 	}
@@ -137,9 +147,8 @@ func TestBool(t *testing.T) {
 
 func TestString(t *testing.T) {
 	arg := String("foo")
-	s, err := arg.ReadString()
-	if err != nil {
-		t.Fatal(err)
+	if expected, got := []byte{'f', 'o', 'o', 0}, arg.Bytes(); !bytes.Equal(expected, got) {
+		t.Fatalf("expected %x, got %x", expected, got)
 	}
 	if other := String("foo"); !arg.Equal(other) {
 		t.Fatalf("expected %s to equal %s", arg, other)
@@ -147,9 +156,15 @@ func TestString(t *testing.T) {
 	if other := Int(4); arg.Equal(other) {
 		t.Fatal("expected %s to not equal %s", arg, other)
 	}
+
+	s, err := arg.ReadString()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if expected, got := "foo", s; expected != got {
 		t.Fatalf("expected %s, got %s", expected, got)
 	}
+
 	if _, err := arg.ReadInt32(); err != ErrInvalidTypeTag {
 		t.Fatalf("expected ErrInvalidTypeTag, got %+v", err)
 	}
@@ -267,7 +282,7 @@ func TestReadArgument(t *testing.T) {
 		},
 		{
 			Input:    Input{tt: 'Q'},
-			Expected: Output{Err: ErrInvalidTypeTag},
+			Expected: Output{Err: errors.Wrap(ErrInvalidTypeTag, `typetag "Q"`)},
 		},
 	} {
 		a, consumed, err := ReadArgument(testcase.Input.tt, testcase.Input.data)

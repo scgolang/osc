@@ -27,6 +27,22 @@ type Message struct {
 	Sender    net.Addr
 }
 
+// Equal returns true if the messages are equal, false otherwise.
+func (msg Message) Equal(other Message) bool {
+	if msg.Address != other.Address {
+		return false
+	}
+	if len(msg.Arguments) != len(other.Arguments) {
+		return false
+	}
+	for i, a := range msg.Arguments {
+		if !a.Equal(other.Arguments[i]) {
+			return false
+		}
+	}
+	return true
+}
+
 // Match returns true if the address of the OSC Message matches the given address.
 func (msg Message) Match(address string) (bool, error) {
 	// Verify same number of parts.
@@ -43,7 +59,7 @@ func (msg Message) Match(address string) (bool, error) {
 // Bytes returns the contents of the message as a slice of bytes.
 func (msg Message) Bytes() []byte {
 	b := [][]byte{
-		OscString(msg.Address),
+		ToBytes(msg.Address),
 		msg.Typetags(),
 	}
 	for _, a := range msg.Arguments {
@@ -63,7 +79,7 @@ func (msg Message) Typetags() []byte {
 }
 
 // WriteTo writes the Message to an io.Writer.
-func (msg Message) Print(w io.Writer) error {
+func (msg Message) WriteTo(w io.Writer) error {
 	if _, err := fmt.Fprintf(w, "%s%s", msg.Address, msg.Typetags()); err != nil {
 		return err
 	}
@@ -84,17 +100,14 @@ func ParseMessage(data []byte, sender net.Addr) (Message, error) {
 		Address: address,
 		Sender:  sender,
 	}
-
 	data = data[idx:]
-
 	typetags, idx := ReadString(data)
-
 	data = data[idx:]
 
 	// Read all arguments.
-	args, err := ReadArguments([]byte(typetags), data[idx:])
+	args, err := ReadArguments([]byte(typetags), data)
 	if err != nil {
-		return Message{}, err
+		return Message{}, errors.Wrap(err, "parse message")
 	}
 	msg.Arguments = args
 

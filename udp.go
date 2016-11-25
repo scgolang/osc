@@ -1,10 +1,25 @@
 package osc
 
-import "net"
+import (
+	"io"
+	"net"
+
+	"github.com/pkg/errors"
+)
+
+// udpConn includes exactly the methods we need from *net.UDPConn
+type udpConn interface {
+	io.WriteCloser
+
+	LocalAddr() net.Addr
+	RemoteAddr() net.Addr
+	ReadFromUDP([]byte) (int, *net.UDPAddr, error)
+	WriteTo([]byte, net.Addr) (int, error)
+}
 
 // UDPConn is an OSC connection over UDP.
 type UDPConn struct {
-	*net.UDPConn
+	udpConn
 }
 
 // DialUDP creates a new OSC connection over UDP.
@@ -13,7 +28,7 @@ func DialUDP(network string, laddr, raddr *net.UDPAddr) (*UDPConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &UDPConn{UDPConn: conn}, nil
+	return &UDPConn{udpConn: conn}, nil
 }
 
 // ListenUDP creates a new UDP server.
@@ -22,19 +37,7 @@ func ListenUDP(network string, laddr *net.UDPAddr) (*UDPConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &UDPConn{UDPConn: conn}, nil
-}
-
-// ListenMulticastUDP listens for OSC messages
-// addressed to the multicast group gaddr on the
-// interface ifi.
-// See https://golang.org/pkg/net/#ListenMulticastUDP.
-func ListenMulticastUDP(network string, ifi *net.Interface, gaddr *net.UDPAddr) (*UDPConn, error) {
-	conn, err := net.ListenMulticastUDP(network, ifi, gaddr)
-	if err != nil {
-		return nil, err
-	}
-	return &UDPConn{UDPConn: conn}, nil
+	return &UDPConn{udpConn: conn}, nil
 }
 
 // Serve starts dispatching OSC.
@@ -63,7 +66,7 @@ func (conn *UDPConn) Serve(dispatcher Dispatcher) error {
 func (conn *UDPConn) serve(dispatcher Dispatcher) error {
 	data := make([]byte, readBufSize)
 
-	_, senderAddress, err := conn.UDPConn.ReadFromUDP(data)
+	_, senderAddress, err := conn.ReadFromUDP(data)
 	if err != nil {
 		return err
 	}
@@ -76,7 +79,9 @@ func (conn *UDPConn) serve(dispatcher Dispatcher) error {
 			return err
 		}
 		// TODO: handle error.
-		go dispatcher.DispatchMessage(msg)
+		if err := dispatcher.Dispatch(msg); err != nil {
+			return errors.Wrap(err, "dispatch message")
+		}
 	default:
 		return ErrParse
 	}
@@ -86,12 +91,12 @@ func (conn *UDPConn) serve(dispatcher Dispatcher) error {
 
 // Send sends an OSC message over UDP.
 func (conn *UDPConn) Send(p Packet) error {
-	_, err := conn.UDPConn.Write(p.Bytes())
+	_, err := conn.Write(p.Bytes())
 	return err
 }
 
 // SendTo sends a packet to the given address.
 func (conn *UDPConn) SendTo(addr net.Addr, p Packet) error {
-	_, err := conn.UDPConn.WriteTo(p.Bytes(), addr)
+	_, err := conn.WriteTo(p.Bytes(), addr)
 	return err
 }

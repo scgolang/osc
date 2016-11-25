@@ -3,7 +3,6 @@ package osc
 import (
 	"errors"
 	"net"
-	"time"
 )
 
 // Common errors.
@@ -21,16 +20,7 @@ type Bundle struct {
 	Sender  net.Addr
 }
 
-// NewBundle returns an OSC Bundle.
-func NewBundle(t time.Time, packets ...Packet) *Bundle {
-	return &Bundle{
-		Timetag: FromTime(t),
-		Packets: packets,
-	}
-}
-
-// Contents returns the contents of the bundle as a
-// slice of bytes.
-func (b *Bundle) Contents() ([]byte, error) {
-	return []byte{}, nil
+// Bytes returns the contents of the bundle as a slice of bytes.
+func (b Bundle) Bytes() []byte {
+	return []byte{}
 }
