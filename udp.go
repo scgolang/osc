@@ -78,7 +78,6 @@ func (conn *UDPConn) serve(dispatcher Dispatcher) error {
 		if err != nil {
 			return err
 		}
-		// TODO: handle error.
 		if err := dispatcher.Dispatch(msg); err != nil {
 			return errors.Wrap(err, "dispatch message")
 		}
