@@ -232,7 +232,7 @@ func TestUDPConnServe_BadInboundTypetag(t *testing.T) {
 	}
 }
 
-func Example_UDPConn_Send() {
+func ExampleUDPConn_Send() {
 	errChan := make(chan error)
 
 	// Setup the server.

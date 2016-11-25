@@ -16,7 +16,7 @@ func TestInt(t *testing.T) {
 		t.Fatal(err)
 	}
 	if other := Int(0); !arg.Equal(other) {
-		t.Fatal("expected %s to equal %s", arg, other)
+		t.Fatalf("expected %s to equal %s", arg, other)
 	}
 	if other := Int(2); arg.Equal(other) {
 		t.Fatalf("expected %s to not equal %s", arg, other)
@@ -56,13 +56,13 @@ func TestFloat(t *testing.T) {
 		t.Fatalf("expected %x, got %x", expected, got)
 	}
 	if other := Float(0); !arg.Equal(other) {
-		t.Fatal("expected %s to equal %s", arg, other)
+		t.Fatalf("expected %s to equal %s", arg, other)
 	}
 	if other := Float(3.14); arg.Equal(other) {
-		t.Fatal("expected %s to not equal %s", arg, other)
+		t.Fatalf("expected %s to not equal %s", arg, other)
 	}
 	if other := String("foo"); arg.Equal(other) {
-		t.Fatal("expected %s to not equal %s", arg, other)
+		t.Fatalf("expected %s to not equal %s", arg, other)
 	}
 
 	f, err := arg.ReadFloat32()
@@ -102,10 +102,10 @@ func TestBool(t *testing.T) {
 		t.Fatalf("expected %x, got %x", expected, got)
 	}
 	if other := Bool(false); !arg.Equal(other) {
-		t.Fatal("expected %s to equal %s", arg, other)
+		t.Fatalf("expected %s to equal %s", arg, other)
 	}
 	if other := Int(3); arg.Equal(other) {
-		t.Fatal("expected %s to not equal %s", arg, other)
+		t.Fatalf("expected %s to not equal %s", arg, other)
 	}
 
 	b, err := arg.ReadBool()
@@ -113,7 +113,7 @@ func TestBool(t *testing.T) {
 		t.Fatal(err)
 	}
 	if expected, got := false, b; expected != got {
-		t.Fatalf("expected %f, got %f", expected, got)
+		t.Fatalf("expected %t, got %t", expected, got)
 	}
 
 	if _, err := arg.ReadInt32(); err != ErrInvalidTypeTag {
@@ -154,7 +154,7 @@ func TestString(t *testing.T) {
 		t.Fatalf("expected %s to equal %s", arg, other)
 	}
 	if other := Int(4); arg.Equal(other) {
-		t.Fatal("expected %s to not equal %s", arg, other)
+		t.Fatalf("expected %s to not equal %s", arg, other)
 	}
 
 	s, err := arg.ReadString()
@@ -204,7 +204,7 @@ func TestBlob(t *testing.T) {
 		t.Fatalf("expected %s to not equal %s", arg, other)
 	}
 	if expected, got := []byte{'f', 'o', 'o'}, b; !bytes.Equal(expected, got) {
-		t.Fatalf("expected %f, got %f", expected, got)
+		t.Fatalf("expected %q, got %q", expected, got)
 	}
 	if _, err := arg.ReadInt32(); err != ErrInvalidTypeTag {
 		t.Fatalf("expected ErrInvalidTypeTag, got %+v", err)

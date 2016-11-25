@@ -166,13 +166,13 @@ func TestMessageWriteTo(t *testing.T) {
 		e1  = &errWriter{erridx: 1}
 		e2  = &errWriter{erridx: 2}
 	)
-	if err := msg.WriteTo(e1); err == nil {
+	if _, err := msg.WriteTo(e1); err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if err := msg.WriteTo(e2); err == nil {
+	if _, err := msg.WriteTo(e2); err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if err := msg.WriteTo(ioutil.Discard); err != nil {
+	if _, err := msg.WriteTo(ioutil.Discard); err != nil {
 		t.Fatal(err)
 	}
 }

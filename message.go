@@ -79,18 +79,24 @@ func (msg Message) Typetags() []byte {
 }
 
 // WriteTo writes the Message to an io.Writer.
-func (msg Message) WriteTo(w io.Writer) error {
-	if _, err := fmt.Fprintf(w, "%s%s", msg.Address, msg.Typetags()); err != nil {
-		return err
+func (msg Message) WriteTo(w io.Writer) (int64, error) {
+	var bytesWritten int
+
+	nw, err := fmt.Fprintf(w, "%s%s", msg.Address, msg.Typetags())
+	if err != nil {
+		return 0, err
 	}
+	bytesWritten += nw
 
 	for _, a := range msg.Arguments {
-		if _, err := a.WriteTo(w); err != nil {
-			return err
+		nw, err := a.WriteTo(w)
+		if err != nil {
+			return 0, err
 		}
+		bytesWritten += int(nw)
 	}
 
-	return nil
+	return int64(bytesWritten), nil
 }
 
 // ParseMessage parses an OSC message from a slice of bytes.
