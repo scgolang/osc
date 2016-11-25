@@ -147,8 +147,8 @@ type badPacket struct{}
 func (bp badPacket) Bytes() []byte {
 	return bytes.Join(
 		[][]byte{
-			[]byte{'/', 'f', 'o', 'o', 0, 0, 0, 0},
-			[]byte{TypetagPrefix, 'Q', 0, 0},
+			{'/', 'f', 'o', 'o', 0, 0, 0, 0},
+			{TypetagPrefix, 'Q', 0, 0},
 		},
 		[]byte{},
 	)

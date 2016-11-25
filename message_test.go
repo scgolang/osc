@@ -131,10 +131,10 @@ func TestMesssageBytes(t *testing.T) {
 			},
 			Expected: bytes.Join(
 				[][]byte{
-					[]byte{'/', 'f', 'o', 'o', 0, 0, 0, 0},
-					[]byte{TypetagPrefix, TypetagInt, TypetagBlob, 0},
-					[]byte{0, 0, 0, 1},
-					[]byte{0, 0, 0, 3, 'b', 'a', 'r', 0},
+					{'/', 'f', 'o', 'o', 0, 0, 0, 0},
+					{TypetagPrefix, TypetagInt, TypetagBlob, 0},
+					{0, 0, 0, 1},
+					{0, 0, 0, 3, 'b', 'a', 'r', 0},
 				},
 				[]byte{},
 			),
@@ -194,10 +194,10 @@ func TestParseMessage(t *testing.T) {
 			Input: Input{
 				data: bytes.Join(
 					[][]byte{
-						[]byte{'/', 'f', 'o', 'o', 0, 0, 0, 0},
-						[]byte{TypetagPrefix, TypetagInt, TypetagBlob, 0},
-						[]byte{0, 0, 0, 1},
-						[]byte{0, 0, 0, 3, 'b', 'a', 'r', 0},
+						{'/', 'f', 'o', 'o', 0, 0, 0, 0},
+						{TypetagPrefix, TypetagInt, TypetagBlob, 0},
+						{0, 0, 0, 1},
+						{0, 0, 0, 3, 'b', 'a', 'r', 0},
 					},
 					[]byte{},
 				),
@@ -216,10 +216,8 @@ func TestParseMessage(t *testing.T) {
 			Input: Input{
 				data: bytes.Join(
 					[][]byte{
-						[]byte{'/', 'f', 'o', 'o', 0, 0, 0, 0},
-						[]byte{TypetagPrefix, 'Q', 0, 0},
-						// []byte{0, 0, 0, 1},
-						// []byte{0, 0, 0, 3, 'b', 'a', 'r', 0},
+						{'/', 'f', 'o', 'o', 0, 0, 0, 0},
+						{TypetagPrefix, 'Q', 0, 0},
 					},
 					[]byte{},
 				),
