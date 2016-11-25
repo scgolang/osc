@@ -51,17 +51,9 @@ func ReadArguments(typetags, data []byte) ([]Argument, error) {
 func ReadArgument(tt byte, data []byte) (Argument, int64, error) {
 	switch tt {
 	case TypetagInt:
-		var val int32
-		if err := binary.Read(bytes.NewReader(data), byteOrder, &val); err != nil {
-			return nil, 0, errors.Wrap(err, "read int argument")
-		}
-		return Int(val), 4, nil
+		return ReadIntFrom(data)
 	case TypetagFloat:
-		var val float32
-		if err := binary.Read(bytes.NewReader(data), byteOrder, &val); err != nil {
-			return nil, 0, errors.Wrap(err, "read float argument")
-		}
-		return Float(val), 4, nil
+		return ReadFloatFrom(data)
 	case TypetagTrue:
 		return Bool(true), 0, nil
 	case TypetagFalse:
@@ -70,12 +62,7 @@ func ReadArgument(tt byte, data []byte) (Argument, int64, error) {
 		s, idx := ReadString(data)
 		return String(s), idx, nil
 	case TypetagBlob:
-		var length int32
-		if err := binary.Read(bytes.NewReader(data), byteOrder, &length); err != nil {
-			return nil, 0, errors.Wrap(err, "read blob argument")
-		}
-		b, bl := ReadBlob(length, data[4:])
-		return Blob(b), bl + 4, nil
+		return ReadBlobFrom(data)
 	default:
 		return nil, 0, errors.Wrapf(ErrInvalidTypeTag, "typetag %q", string(tt))
 	}
@@ -83,6 +70,15 @@ func ReadArgument(tt byte, data []byte) (Argument, int64, error) {
 
 // Int represents a 32-bit integer.
 type Int int32
+
+// ReadIntFrom reads a 32-bit integer from a byte slice.
+func ReadIntFrom(data []byte) (Argument, int64, error) {
+	var i Int
+	if err := binary.Read(bytes.NewReader(data), byteOrder, &i); err != nil {
+		return nil, 0, errors.Wrap(err, "read int argument")
+	}
+	return i, 4, nil
+}
 
 // Bytes converts the arg to a byte slice suitable for adding to the binary representation of an OSC message.
 func (i Int) Bytes() []byte {
@@ -132,6 +128,15 @@ func (i Int) WriteTo(w io.Writer) (int64, error) {
 
 // Float represents a 32-bit float.
 type Float float32
+
+// ReadFloatFrom reads a 32-bit float from a byte slice.
+func ReadFloatFrom(data []byte) (Argument, int64, error) {
+	var f Float
+	if err := binary.Read(bytes.NewReader(data), byteOrder, &f); err != nil {
+		return nil, 0, errors.Wrap(err, "read float argument")
+	}
+	return f, 4, nil
+}
 
 // Bytes converts the arg to a byte slice suitable for adding to the binary representation of an OSC message.
 func (f Float) Bytes() []byte {
@@ -273,6 +278,16 @@ func (s String) WriteTo(w io.Writer) (int64, error) {
 
 // Blob is a slice of bytes.
 type Blob []byte
+
+// ReadBlobFrom reads a binary blob from the provided data.
+func ReadBlobFrom(data []byte) (Argument, int64, error) {
+	var length int32
+	if err := binary.Read(bytes.NewReader(data), byteOrder, &length); err != nil {
+		return nil, 0, errors.Wrap(err, "read blob argument")
+	}
+	b, bl := ReadBlob(length, data[4:])
+	return Blob(b), bl + 4, nil
+}
 
 // Bytes converts the arg to a byte slice suitable for adding to the binary representation of an OSC message.
 func (b Blob) Bytes() []byte {
