@@ -31,6 +31,13 @@ const (
 // significant bit is a special case meaning "immediately."
 type Timetag uint64
 
+// Bytes converts the timetag to a slice of bytes.
+func (tt Timetag) Bytes() []byte {
+	bs := make([]byte, 8)
+	byteOrder.PutUint64(bs, uint64(tt))
+	return bs
+}
+
 func (tt Timetag) String() string {
 	return fmt.Sprintf("%x", uint64(tt))
 }

@@ -1,8 +1,14 @@
 package osc
 
 import (
+	"bytes"
 	"errors"
 	"net"
+)
+
+const (
+	// BundleTag is the tag on an OSC bundle message.
+	BundleTag = "#bundle"
 )
 
 // Common errors.
@@ -22,5 +28,16 @@ type Bundle struct {
 
 // Bytes returns the contents of the bundle as a slice of bytes.
 func (b Bundle) Bytes() []byte {
-	return []byte{}
+	bss := [][]byte{
+		ToBytes(BundleTag),
+		b.Timetag.Bytes(),
+	}
+	for _, p := range b.Packets {
+		var (
+			bs     = p.Bytes()
+			length = Int(int32(len(bs)))
+		)
+		bss = append(bss, length.Bytes(), p.Bytes())
+	}
+	return bytes.Join(bss, []byte{})
 }

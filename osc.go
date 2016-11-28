@@ -6,9 +6,6 @@ import (
 )
 
 const (
-	// BundleTag is the tag on an OSC bundle message.
-	BundleTag = "#bundle"
-
 	// MessageChar is the first character of any valid OSC message.
 	MessageChar = '/'
 )
