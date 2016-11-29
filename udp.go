@@ -66,19 +66,26 @@ func (conn *UDPConn) Serve(dispatcher Dispatcher) error {
 func (conn *UDPConn) serve(dispatcher Dispatcher) error {
 	data := make([]byte, readBufSize)
 
-	_, senderAddress, err := conn.ReadFromUDP(data)
+	_, sender, err := conn.ReadFromUDP(data)
 	if err != nil {
 		return err
 	}
 
 	switch data[0] {
-	// TODO: handle bundle
-	case MessageChar:
-		msg, err := ParseMessage(data, senderAddress)
+	case BundleTag[0]:
+		bundle, err := ParseBundle(data, sender)
 		if err != nil {
 			return err
 		}
-		if err := dispatcher.Dispatch(msg); err != nil {
+		if err := dispatcher.Dispatch(bundle); err != nil {
+			return errors.Wrap(err, "dispatch bundle")
+		}
+	case MessageChar:
+		msg, err := ParseMessage(data, sender)
+		if err != nil {
+			return err
+		}
+		if err := dispatcher.Invoke(msg); err != nil {
 			return errors.Wrap(err, "dispatch message")
 		}
 	default:

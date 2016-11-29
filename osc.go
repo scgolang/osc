@@ -32,6 +32,7 @@ var (
 // is always a multiple of 4.
 type Packet interface {
 	Bytes() []byte
+	Equal(other Packet) bool
 }
 
 // ToBytes returns an OSC representation of the given string.

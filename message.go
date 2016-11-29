@@ -27,6 +27,27 @@ type Message struct {
 	Sender    net.Addr
 }
 
+// ParseMessage parses an OSC message from a slice of bytes.
+func ParseMessage(data []byte, sender net.Addr) (Message, error) {
+	address, idx := ReadString(data)
+	msg := Message{
+		Address: address,
+		Sender:  sender,
+	}
+	data = data[idx:]
+	typetags, idx := ReadString(data)
+	data = data[idx:]
+
+	// Read all arguments.
+	args, err := ReadArguments([]byte(typetags), data)
+	if err != nil {
+		return Message{}, errors.Wrap(err, "parse message")
+	}
+	msg.Arguments = args
+
+	return msg, nil
+}
+
 // Bytes returns the contents of the message as a slice of bytes.
 func (msg Message) Bytes() []byte {
 	b := [][]byte{
@@ -40,15 +61,19 @@ func (msg Message) Bytes() []byte {
 }
 
 // Equal returns true if the messages are equal, false otherwise.
-func (msg Message) Equal(other Message) bool {
-	if msg.Address != other.Address {
+func (msg Message) Equal(other Packet) bool {
+	msg2, ok := other.(Message)
+	if !ok {
 		return false
 	}
-	if len(msg.Arguments) != len(other.Arguments) {
+	if msg.Address != msg2.Address {
+		return false
+	}
+	if len(msg.Arguments) != len(msg2.Arguments) {
 		return false
 	}
 	for i, a := range msg.Arguments {
-		if !a.Equal(other.Arguments[i]) {
+		if !a.Equal(msg2.Arguments[i]) {
 			return false
 		}
 	}
@@ -97,27 +122,6 @@ func (msg Message) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	return int64(bytesWritten), nil
-}
-
-// ParseMessage parses an OSC message from a slice of bytes.
-func ParseMessage(data []byte, sender net.Addr) (Message, error) {
-	address, idx := ReadString(data)
-	msg := Message{
-		Address: address,
-		Sender:  sender,
-	}
-	data = data[idx:]
-	typetags, idx := ReadString(data)
-	data = data[idx:]
-
-	// Read all arguments.
-	args, err := ReadArguments([]byte(typetags), data)
-	if err != nil {
-		return Message{}, errors.Wrap(err, "parse message")
-	}
-	msg.Arguments = args
-
-	return msg, nil
 }
 
 // GetRegex compiles and returns a regular expression object for the given address pattern.

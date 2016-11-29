@@ -168,6 +168,10 @@ func (bp badPacket) Bytes() []byte {
 	)
 }
 
+func (bp badPacket) Equal(other Packet) bool {
+	return false
+}
+
 func TestUDPConnServe_BadInboundAddr(t *testing.T) {
 	for i, packet := range []Packet{
 		Message{Address: "/["},
@@ -203,6 +207,16 @@ func TestUDPConnSendTo(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := <-errChan; err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestUDPConnSendBundle(t *testing.T) {
+	conn, errChan := testUDPServer(t, nil)
+	if err := conn.Send(Bundle{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-errChan; err != nil {
 		t.Fatal("expected error, got nil")
 	}
 }

@@ -26,6 +26,12 @@ type Bundle struct {
 	Sender  net.Addr
 }
 
+// ParseBundle parses a bundle from a byte slice.
+func ParseBundle(data []byte, sender net.Addr) (Bundle, error) {
+	b := Bundle{}
+	return b, nil
+}
+
 // Bytes returns the contents of the bundle as a slice of bytes.
 func (b Bundle) Bytes() []byte {
 	bss := [][]byte{
@@ -40,4 +46,24 @@ func (b Bundle) Bytes() []byte {
 		bss = append(bss, length.Bytes(), p.Bytes())
 	}
 	return bytes.Join(bss, []byte{})
+}
+
+// Equal returns true if one bundle equals another, and false otherwise.
+func (b Bundle) Equal(other Packet) bool {
+	b2, ok := other.(Bundle)
+	if !ok {
+		return false
+	}
+	if b.Timetag != b2.Timetag {
+		return false
+	}
+	if len(b.Packets) != len(b2.Packets) {
+		return false
+	}
+	for i, p := range b.Packets {
+		if !p.Equal(b2.Packets[i]) {
+			return false
+		}
+	}
+	return true
 }

@@ -12,7 +12,7 @@ import (
 func TestMessageEqual(t *testing.T) {
 	for _, testcase := range []struct {
 		M1       Message
-		M2       Message
+		M2       Packet
 		Expected bool
 	}{
 		{
@@ -33,6 +33,11 @@ func TestMessageEqual(t *testing.T) {
 		{
 			M1:       Message{Address: "/foo", Arguments: []Argument{Int(31)}},
 			M2:       Message{Address: "/foo", Arguments: []Argument{Int(32)}},
+			Expected: false,
+		},
+		{
+			M1:       Message{Address: "/foo", Arguments: []Argument{Int(31)}},
+			M2:       Bundle{},
 			Expected: false,
 		},
 	} {

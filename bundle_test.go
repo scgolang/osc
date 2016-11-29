@@ -88,3 +88,84 @@ func TestBundleBytes(t *testing.T) {
 		}
 	}
 }
+
+func TestBundleEqual(t *testing.T) {
+	for _, testcase := range []struct {
+		b  Bundle
+		e  []Bundle
+		ne []Packet
+	}{
+		{
+			b: Bundle{Timetag: 5},
+			e: []Bundle{
+				{Timetag: 5},
+			},
+			ne: []Packet{
+				Message{},
+				Bundle{Timetag: 2},
+				Bundle{
+					Timetag: 5,
+					Packets: []Packet{
+						Message{Address: "/foo"},
+					},
+				},
+			},
+		},
+		{
+			b: Bundle{
+				Timetag: 5,
+				Packets: []Packet{
+					Message{Address: "/bar"},
+				},
+			},
+			ne: []Packet{
+				Bundle{
+					Timetag: 5,
+					Packets: []Packet{
+						Message{Address: "/foo"},
+					},
+				},
+			},
+		},
+	} {
+		b := testcase.b
+		for i, e := range testcase.e {
+			if !b.Equal(e) {
+				t.Fatalf("(testcase %d) expected %q to equal %q", i, b, e)
+			}
+		}
+		for i, ne := range testcase.ne {
+			if b.Equal(ne) {
+				t.Fatalf("(testcase %d) expected %q to not equal %q", i, b, ne)
+			}
+		}
+	}
+}
+
+func TestParseBundle(t *testing.T) {
+	type Output struct {
+		bundle Bundle
+		err    error
+	}
+	for _, testcase := range []struct {
+		Input    []byte
+		Expected Output
+	}{
+		{
+			Input: []byte{},
+			Expected: Output{
+				bundle: Bundle{},
+			},
+		},
+	} {
+		b, err := ParseBundle(testcase.Input, nil)
+		if testcase.Expected.err == nil {
+			if err != nil {
+				t.Fatal(err)
+			}
+			if expected, got := testcase.Expected.bundle, b; !expected.Equal(got) {
+				t.Fatal("expected %q, got %q", expected, got)
+			}
+		}
+	}
+}
