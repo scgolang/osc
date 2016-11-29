@@ -3,7 +3,6 @@ package osc
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -39,7 +38,7 @@ func (tt Timetag) Bytes() []byte {
 }
 
 func (tt Timetag) String() string {
-	return fmt.Sprintf("%x", uint64(tt))
+	return tt.Time().Format(time.RFC3339)
 }
 
 // Time converts an OSC timetag to a time.Time.

@@ -50,7 +50,7 @@ func TestTimetagString(t *testing.T) {
 		Input    Timetag
 		Expected string
 	}{
-		{Input: Timetag(10), Expected: "a"},
+		{Input: Timetag(10), Expected: "1900-01-01T00:00:00Z"},
 	} {
 		if expected, got := testcase.Expected, testcase.Input.String(); expected != got {
 			t.Fatalf("expected, %s, got %s", expected, got)

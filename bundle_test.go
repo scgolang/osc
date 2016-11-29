@@ -192,7 +192,7 @@ func TestParseBundle(t *testing.T) {
 				[]byte{},
 			),
 			Expected: Output{
-				err: errors.New(`read packets: packet should never start with %`),
+				err: errors.New(`read packets: read packet: packet should never start with %`),
 			},
 		},
 		// testcase 4
@@ -213,10 +213,8 @@ func TestParseBundle(t *testing.T) {
 					Timetag: Timetag(50),
 					Packets: []Packet{
 						Message{
-							Address: "/foobar",
-							Arguments: Arguments{
-								Int(7),
-							},
+							Address:   "/foobar",
+							Arguments: Arguments{Int(7)},
 						},
 					},
 				},
@@ -233,32 +231,162 @@ func TestParseBundle(t *testing.T) {
 				[]byte{},
 			),
 			Expected: Output{
+				bundle: Bundle{Timetag: Timetag(50)},
+			},
+		},
+		// testcase 6
+		{
+			Input: bytes.Join(
+				[][]byte{
+					append([]byte("#bundle"), 0),
+					Timetag(50).Bytes(),
+					[]byte{0, 0, 0, 0x20},
+					[]byte{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
+					[]byte{TypetagPrefix, TypetagInt, 0, 0},
+					[]byte{0, 0, 0, 7},
+				},
+				[]byte{},
+			),
+			Expected: Output{
+				err: errors.New("read packets: read packet: packet length 32 is greater than data length 16"),
+			},
+		},
+		// testcase 7
+		{
+			Input: bytes.Join(
+				[][]byte{
+					append([]byte("#bundle"), 0),
+					Timetag(50).Bytes(),
+					[]byte{0, 0, 0, 0x10},
+					[]byte{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
+					[]byte{TypetagPrefix, TypetagInt, 0, 0},
+					[]byte{0, 0, 0, 7},
+					[]byte{0, 0, 0, 0x10},
+					[]byte{'/', 'b', 'o', 'r', 'k', 0, 0, 0},
+					[]byte{TypetagPrefix, TypetagFloat, 0, 0},
+					[]byte{0x40, 0x48, 0xf5, 0xc3},
+				},
+				[]byte{},
+			),
+			Expected: Output{
 				bundle: Bundle{
 					Timetag: Timetag(50),
-					// Packets: []Packet{
-					// 	Message{
-					// 		Address: "/foobar",
-					// 		Arguments: Arguments{
-					// 			Int(7),
-					// 		},
-					// 	},
-					// },
+					Packets: []Packet{
+						Message{
+							Address:   "/foobar",
+							Arguments: Arguments{Int(7)},
+						},
+						Message{
+							Address:   "/bork",
+							Arguments: Arguments{Float(3.14)},
+						},
+					},
 				},
+			},
+		},
+		// testcase 8
+		{
+			Input: bytes.Join(
+				[][]byte{
+					append([]byte("#bundle"), 0),
+					Timetag(50).Bytes(),
+					[]byte{0, 0, 0, 0x10},
+					[]byte{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
+					[]byte{TypetagPrefix, TypetagInt, 'Q', 0},
+					[]byte{0, 0, 0, 7},
+				},
+				[]byte{},
+			),
+			Expected: Output{
+				err: errors.New(`read packets: read packet: parse message from packet: parse message: read argument 1: typetag "Q": invalid type tag`),
+			},
+		},
+		// testcase 9
+		{
+			Input: bytes.Join([][]byte{
+				ToBytes(BundleTag),
+				[]byte{0, 0, 0, 0, 0, 0, 0, 0x0A}, // Timetag
+				[]byte{0, 0, 0, 0x24},             // Length of first bundle element
+				ToBytes(BundleTag),
+				[]byte{0, 0, 0, 0, 0, 0, 0, 0x14}, // Timetag
+				[]byte{0, 0, 0, 0x10},             // Length of first element of bundle within bundle.
+				[]byte{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
+				[]byte{TypetagPrefix, TypetagFloat, 0, 0},
+				[]byte{0x3F, 0x80, 0x00, 0x00},
+				[]byte{0, 0, 0, 0x14}, // Length of second bundle element
+				[]byte{'/', 'f', 'o', 'o', 0, 0, 0, 0},
+				[]byte{TypetagPrefix, TypetagInt, TypetagFloat, 0},
+				[]byte{0, 0, 0, 2},
+				[]byte{0x40, 0xA7, 0x67, 0xA1},
+				[]byte{0, 0, 0, 0x10}, // Length of third bundleelement
+				ToBytes(BundleTag),
+				[]byte{0, 0, 0, 0, 0, 0, 0, 0x28}, // Timetag
+			}, []byte{}),
+			Expected: Output{
+				bundle: Bundle{
+					Timetag: 10,
+					Packets: []Packet{
+						Bundle{
+							Timetag: 20,
+							Packets: []Packet{
+								Message{
+									Address: "/foobar",
+									Arguments: Arguments{
+										Float(1),
+									},
+								},
+							},
+						},
+						Message{
+							Address: "/foo",
+							Arguments: Arguments{
+								Int(2),
+								Float(5.2314),
+							},
+						},
+						Bundle{Timetag: 40},
+					},
+				},
+			},
+		},
+		// testcase 10
+		{
+			Input: bytes.Join([][]byte{
+				ToBytes(BundleTag),
+				[]byte{0, 0, 0, 0, 0, 0, 0, 0x0A}, // Timetag
+				[]byte{0, 0, 0, 0x24},             // Length of first bundle element
+				ToBytes(BundleTag),
+				[]byte{0, 0, 0, 0, 0, 0, 0, 0x14}, // Timetag
+				[]byte{0, 0, 0, 0x10},             // Length of first element of bundle within bundle.
+				[]byte{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
+				[]byte{TypetagPrefix, 'Q', 0, 0},
+				[]byte{0x3F, 0x80, 0x00, 0x00},
+			}, []byte{}),
+			Expected: Output{
+				err: errors.New(`read packets: read packet: parse bundle from packet: read packets: read packet: parse message from packet: parse message: read argument 0: typetag "Q": invalid type tag`),
 			},
 		},
 	} {
 		b, err := ParseBundle(testcase.Input, nil)
 		if testcase.Expected.err == nil {
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("(testcase %d) %s", i, err)
 			}
 			if expected, got := testcase.Expected.bundle, b; !expected.Equal(got) {
-				t.Fatalf("(testcase %d) expected %q, got %q", i, expected, got)
+				t.Fatalf("(testcase %d) expected %q\n                              got %q", i, expected, got)
 			}
 		} else {
 			if expected, got := testcase.Expected.err.Error(), err.Error(); expected != got {
 				t.Fatalf("(testcase %d) expected %s, got %s", i, expected, got)
 			}
 		}
+	}
+}
+
+func TestParseBundleLimit(t *testing.T) {
+	// Test the limit parameter of parseBundle.
+	_, limitErr := parseBundle(nil, nil, 10)
+	if expected, got := errors.New("limit must be >= 16 or < 0"), limitErr; got == nil || (expected.Error() != got.Error()) {
+		t.Fatalf("expected %s, got %s", expected, got)
 	}
 }
