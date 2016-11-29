@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -213,11 +214,11 @@ func TestUDPConnSendTo(t *testing.T) {
 
 func TestUDPConnSendBundle(t *testing.T) {
 	conn, errChan := testUDPServer(t, nil)
-	if err := conn.Send(Bundle{}); err != nil {
+	if err := conn.Send(Bundle{Timetag: FromTime(time.Now())}); err != nil {
 		t.Fatal(err)
 	}
 	if err := <-errChan; err != nil {
-		t.Fatal("expected error, got nil")
+		t.Fatal(err)
 	}
 }
 

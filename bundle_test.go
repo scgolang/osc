@@ -3,6 +3,8 @@ package osc
 import (
 	"bytes"
 	"testing"
+
+	"github.com/pkg/errors"
 )
 
 func TestBundleBytes(t *testing.T) {
@@ -147,14 +149,101 @@ func TestParseBundle(t *testing.T) {
 		bundle Bundle
 		err    error
 	}
-	for _, testcase := range []struct {
+	for i, testcase := range []struct {
 		Input    []byte
 		Expected Output
 	}{
+		// testcase 0
 		{
 			Input: []byte{},
 			Expected: Output{
-				bundle: Bundle{},
+				err: errors.New(`slice bundle tag: expected "#bundle\x00", got ""`),
+			},
+		},
+		// testcase 1
+		{
+			Input: append([]byte("#fundle"), 0),
+			Expected: Output{
+				err: errors.New(`slice bundle tag: expected "#bundle\x00", got "#fundle\x00"`),
+			},
+		},
+		// testcase 2
+		{
+			Input: bytes.Join(
+				[][]byte{
+					append([]byte("#bundle"), 0),
+					[]byte{1, 2, 3, 4, 5, 6, 7},
+				},
+				[]byte{},
+			),
+			Expected: Output{
+				err: errors.New(`read timetag: timetags must be 64-bit`),
+			},
+		},
+		// testcase 3
+		{
+			Input: bytes.Join(
+				[][]byte{
+					append([]byte("#bundle"), 0),
+					[]byte{1, 2, 3, 4, 5, 6, 7, 8},
+					[]byte{0, 0, 0, 4},
+					[]byte{'%', 'n', 'o', 0},
+				},
+				[]byte{},
+			),
+			Expected: Output{
+				err: errors.New(`read packets: packet should never start with %`),
+			},
+		},
+		// testcase 4
+		{
+			Input: bytes.Join(
+				[][]byte{
+					append([]byte("#bundle"), 0),
+					Timetag(50).Bytes(),
+					[]byte{0, 0, 0, 0x10},
+					[]byte{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
+					[]byte{TypetagPrefix, TypetagInt, 0, 0},
+					[]byte{0, 0, 0, 7},
+				},
+				[]byte{},
+			),
+			Expected: Output{
+				bundle: Bundle{
+					Timetag: Timetag(50),
+					Packets: []Packet{
+						Message{
+							Address: "/foobar",
+							Arguments: Arguments{
+								Int(7),
+							},
+						},
+					},
+				},
+			},
+		},
+		// testcase 5
+		{
+			Input: bytes.Join(
+				[][]byte{
+					append([]byte("#bundle"), 0),
+					Timetag(50).Bytes(),
+					[]byte{0, 0, 0x10},
+				},
+				[]byte{},
+			),
+			Expected: Output{
+				bundle: Bundle{
+					Timetag: Timetag(50),
+					// Packets: []Packet{
+					// 	Message{
+					// 		Address: "/foobar",
+					// 		Arguments: Arguments{
+					// 			Int(7),
+					// 		},
+					// 	},
+					// },
+				},
 			},
 		},
 	} {
@@ -164,7 +253,11 @@ func TestParseBundle(t *testing.T) {
 				t.Fatal(err)
 			}
 			if expected, got := testcase.Expected.bundle, b; !expected.Equal(got) {
-				t.Fatal("expected %q, got %q", expected, got)
+				t.Fatalf("(testcase %d) expected %q, got %q", i, expected, got)
+			}
+		} else {
+			if expected, got := testcase.Expected.err.Error(), err.Error(); expected != got {
+				t.Fatalf("(testcase %d) expected %s, got %s", i, expected, got)
 			}
 		}
 	}

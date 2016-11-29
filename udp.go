@@ -1,6 +1,7 @@
 package osc
 
 import (
+	"fmt"
 	"io"
 	"net"
 
@@ -75,6 +76,7 @@ func (conn *UDPConn) serve(dispatcher Dispatcher) error {
 	case BundleTag[0]:
 		bundle, err := ParseBundle(data, sender)
 		if err != nil {
+			fmt.Printf("############################################# ParseBundle err %s\n", err)
 			return err
 		}
 		if err := dispatcher.Dispatch(bundle); err != nil {
