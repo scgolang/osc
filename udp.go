@@ -1,7 +1,6 @@
 package osc
 
 import (
-	"io"
 	"net"
 
 	"github.com/pkg/errors"
@@ -9,10 +8,8 @@ import (
 
 // udpConn includes exactly the methods we need from *net.UDPConn
 type udpConn interface {
-	io.WriteCloser
+	net.Conn
 
-	LocalAddr() net.Addr
-	RemoteAddr() net.Addr
 	ReadFromUDP([]byte) (int, *net.UDPAddr, error)
 	WriteTo([]byte, net.Addr) (int, error)
 }
