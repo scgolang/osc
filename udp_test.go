@@ -50,7 +50,6 @@ func TestListenUDP(t *testing.T) {
 // message, a method is automatically added to the provided dispatcher
 // at the "/server/close" address that closes the server.
 func testUDPServer(t *testing.T, dispatcher Dispatcher) (*UDPConn, chan error) {
-	// Setup the server.
 	laddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -71,7 +70,6 @@ func testUDPServer(t *testing.T, dispatcher Dispatcher) (*UDPConn, chan error) {
 		errChan <- server.Serve(dispatcher)
 	}()
 
-	// Send a message with a bad address.
 	raddr, err := net.ResolveUDPAddr("udp", server.LocalAddr().String())
 	if err != nil {
 		t.Fatal(err)
@@ -85,7 +83,7 @@ func testUDPServer(t *testing.T, dispatcher Dispatcher) (*UDPConn, chan error) {
 
 func TestUDPConnSend_OK(t *testing.T) {
 	conn, errChan := testUDPServer(t, nil)
-	if err := conn.Send(Message{Address: "/close"}); err != nil {
+	if err := conn.Send(Message{Address: "/server/close"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := <-errChan; err != nil {
@@ -156,23 +154,6 @@ func TestUDPConnServe_NilDispatcher(t *testing.T) {
 	}
 }
 
-// badPacket is a Packet that returns an OSC message with typetag 'Q'
-type badPacket struct{}
-
-func (bp badPacket) Bytes() []byte {
-	return bytes.Join(
-		[][]byte{
-			{'/', 'f', 'o', 'o', 0, 0, 0, 0},
-			{TypetagPrefix, 'Q', 0, 0},
-		},
-		[]byte{},
-	)
-}
-
-func (bp badPacket) Equal(other Packet) bool {
-	return false
-}
-
 func TestUDPConnServe_BadInboundAddr(t *testing.T) {
 	for i, packet := range []Packet{
 		Message{Address: "/["},
@@ -213,11 +194,57 @@ func TestUDPConnSendTo(t *testing.T) {
 }
 
 func TestUDPConnSendBundle(t *testing.T) {
+	b := Bundle{
+		Timetag: FromTime(time.Now()),
+		Packets: []Packet{
+			Message{Address: "/server/close"},
+		},
+	}
 	conn, errChan := testUDPServer(t, nil)
-	if err := conn.Send(Bundle{Timetag: FromTime(time.Now())}); err != nil {
+	if err := conn.Send(b); err != nil {
 		t.Fatal(err)
 	}
 	if err := <-errChan; err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestUDPConnSendBundle_BadTypetag(t *testing.T) {
+	conn, errChan := testUDPServer(t, nil)
+	if err := conn.Send(badBundle{}); err != nil {
+		t.Fatal(err)
+	}
+	err := <-errChan
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	expected, got := `read packets: read packet: parse message from packet: parse message: read argument 0: typetag "Q": invalid type tag`, err.Error()
+	if expected != got {
+		t.Fatal(err)
+	}
+}
+
+func TestUDPConnSendBundle_DispatchError(t *testing.T) {
+	b := Bundle{
+		Timetag: FromTime(time.Now()),
+		Packets: []Packet{
+			Message{Address: "/foo"},
+		},
+	}
+	conn, errChan := testUDPServer(t, Dispatcher{
+		"/foo": func(msg Message) error {
+			return errors.New("oops")
+		},
+	})
+	if err := conn.Send(b); err != nil {
+		t.Fatal(err)
+	}
+	err := <-errChan
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	expected, got := `dispatch bundle: oops`, err.Error()
+	if expected != got {
 		t.Fatal(err)
 	}
 }
@@ -257,4 +284,40 @@ func ExampleUDPConn_Send() {
 	if err := <-errChan; err != nil {
 		log.Fatal(err)
 	}
+}
+
+// badPacket is a Packet that returns an OSC message with typetag 'Q'
+type badPacket struct{}
+
+func (bp badPacket) Bytes() []byte {
+	return bytes.Join(
+		[][]byte{
+			{'/', 'f', 'o', 'o', 0, 0, 0, 0},
+			{TypetagPrefix, 'Q', 0, 0},
+		},
+		[]byte{},
+	)
+}
+
+func (bp badPacket) Equal(other Packet) bool {
+	return false
+}
+
+type badBundle struct{}
+
+func (bb badBundle) Bytes() []byte {
+	msg := badPacket{}.Bytes()
+	return bytes.Join(
+		[][]byte{
+			ToBytes(BundleTag),
+			FromTime(time.Now()).Bytes(),
+			Int(len(msg)).Bytes(),
+			msg,
+		},
+		[]byte{},
+	)
+}
+
+func (bb badBundle) Equal(other Packet) bool {
+	return false
 }

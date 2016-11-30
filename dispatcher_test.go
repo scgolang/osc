@@ -74,10 +74,17 @@ func TestDispatcherDispatchNestedBundle(t *testing.T) {
 	<-c
 }
 
-func TestDispatcherInvokePacket(t *testing.T) {
-	d := Dispatcher{}
-	if err := d.invoke(badPacket{}); err == nil {
-		t.Fatal("expected error, got nil")
+func TestDispatcherMiss(t *testing.T) {
+	d := Dispatcher{
+		"/foo": func(msg Message) error {
+			return nil
+		},
+	}
+	b := Bundle{
+		Timetag: FromTime(time.Now()),
+	}
+	if err := d.Dispatch(b); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -103,5 +110,8 @@ func TestDispatcherInvoke(t *testing.T) {
 	}
 	if err := d.Invoke(Message{Address: "/baz"}); err != nil {
 		t.Fatal(err)
+	}
+	if err := d.invoke(badPacket{}); err == nil {
+		t.Fatal("expected error, got nil")
 	}
 }
