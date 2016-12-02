@@ -116,9 +116,9 @@ func sliceBundleTag(data []byte) ([]byte, error) {
 	if len(data) < len(bundleTag) {
 		return nil, errors.Errorf("expected %q, got %q", bundleTag, data)
 	}
-	idx := bytes.Index(data, []byte(bundleTag))
+	idx := bytes.Index(data, bundleTag)
 	if idx == -1 {
-		return nil, errors.Errorf("expected %q, got %q", []byte(bundleTag), data[:len(bundleTag)])
+		return nil, errors.Errorf("expected %q, got %q", bundleTag, data[:len(bundleTag)])
 	}
 	return data[len(bundleTag):], nil
 }

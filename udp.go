@@ -119,6 +119,7 @@ func (conn *UDPConn) SendTo(addr net.Addr, p Packet) error {
 	return err
 }
 
+// Close closes the udp conn.
 func (conn *UDPConn) Close() error {
 	close(conn.closeChan)
 	return conn.udpConn.Close()
