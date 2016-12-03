@@ -43,19 +43,26 @@ func TestListenUDP(t *testing.T) {
 	}
 }
 
-func TestUDPContext(t *testing.T) {
-	udpAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:12345")
+func TestDialUDPContext(t *testing.T) {
+	raddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:12345")
 	if err != nil {
 		t.Fatal(err)
 	}
-	c, err := DialUDP("udp", nil, udpAddr)
+	laddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx := context.TODO()
-	c.SetContext(ctx)
-	if ctx2 := c.Context(); ctx2 != ctx {
-		t.Fatalf("expected %+v to be %+v", ctx2, ctx)
+	c, err := DialUDPContext(context.Background(), "udp", laddr, raddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctxTimeout, _ := context.WithTimeout(c.Context(), 20*time.Millisecond)
+	c.SetContext(ctxTimeout)
+	if c.Context() != ctxTimeout {
+		t.Fatalf("expected %+v to be %+v", ctxTimeout, c.Context())
+	}
+	if err := c.Serve(Dispatcher{}); err != context.DeadlineExceeded {
+		t.Fatalf("expected context.DeadlineExceeded, got %+v", err)
 	}
 }
 

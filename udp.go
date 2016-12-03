@@ -24,6 +24,11 @@ type UDPConn struct {
 
 // DialUDP creates a new OSC connection over UDP.
 func DialUDP(network string, laddr, raddr *net.UDPAddr) (*UDPConn, error) {
+	return DialUDPContext(context.Background(), network, laddr, raddr)
+}
+
+// DialUDPContext returns a new OSC connection over UDP that can be canceled with the provided context.
+func DialUDPContext(ctx context.Context, network string, laddr, raddr *net.UDPAddr) (*UDPConn, error) {
 	conn, err := net.DialUDP(network, laddr, raddr)
 	if err != nil {
 		return nil, err
