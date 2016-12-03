@@ -36,7 +36,7 @@ func DialUDPContext(ctx context.Context, network string, laddr, raddr *net.UDPAd
 	return &UDPConn{
 		udpConn:   conn,
 		closeChan: make(chan struct{}),
-		ctx:       context.Background(),
+		ctx:       ctx,
 	}, nil
 }
 
