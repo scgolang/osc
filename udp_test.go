@@ -2,6 +2,7 @@ package osc
 
 import (
 	"bytes"
+	"context"
 	"log"
 	"net"
 	"testing"
@@ -42,14 +43,29 @@ func TestListenUDP(t *testing.T) {
 	}
 }
 
+func TestUDPContext(t *testing.T) {
+	udpAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:12345")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := DialUDP("udp", nil, udpAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.TODO()
+	c.SetContext(ctx)
+	if ctx2 := c.Context(); ctx2 != ctx {
+		t.Fatalf("expected %+v to be %+v", ctx2, ctx)
+	}
+}
+
 // testUDPServer creates a server listening on an ephemeral port,
-// initializes a connection to that server, and returns the connection
-// and a channel that emits the error returned from the server's
-// Serve method.
+// initializes a client connection to that server, returns the server connection,
+// the client connection, and a channel that emits the error returned from the server's Serve method.
 // For clients that are interested in closing the server with an OSC
 // message, a method is automatically added to the provided dispatcher
 // at the "/server/close" address that closes the server.
-func testUDPServer(t *testing.T, dispatcher Dispatcher) (*UDPConn, chan error) {
+func testUDPServer(t *testing.T, dispatcher Dispatcher) (*UDPConn, *UDPConn, chan error) {
 	laddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -78,11 +94,11 @@ func testUDPServer(t *testing.T, dispatcher Dispatcher) (*UDPConn, chan error) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return conn, errChan
+	return server, conn, errChan
 }
 
 func TestUDPConnSend_OK(t *testing.T) {
-	conn, errChan := testUDPServer(t, nil)
+	_, conn, errChan := testUDPServer(t, nil)
 	if err := conn.Send(Message{Address: "/server/close"}); err != nil {
 		t.Fatal(err)
 	}
@@ -99,6 +115,30 @@ func (e errConn) ReadFromUDP(b []byte) (int, *net.UDPAddr, error) {
 	return 0, nil, errors.New("oops")
 }
 
+func TestUDPConnServe_ContextTimeout(t *testing.T) {
+	laddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	timeoutCtx, _ := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	server, err := ListenUDPContext(timeoutCtx, "udp", laddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	errChan := make(chan error)
+	go func() {
+		errChan <- server.Serve(Dispatcher{})
+	}()
+	select {
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("timeout")
+	case err := <-errChan:
+		if err != context.DeadlineExceeded {
+			t.Fatalf("expected context.DeadlineExceeded, got %+v", err)
+		}
+	}
+}
+
 func TestUDPConnServe_ReadError(t *testing.T) {
 	errChan := make(chan error)
 
@@ -113,6 +153,7 @@ func TestUDPConnServe_ReadError(t *testing.T) {
 	}
 	server := &UDPConn{
 		udpConn: errConn{udpConn: serverConn},
+		ctx:     context.Background(),
 	}
 	go func() {
 		errChan <- server.Serve(map[string]Method{
@@ -161,7 +202,7 @@ func TestUDPConnServe_BadInboundAddr(t *testing.T) {
 		badPacket{},
 	} {
 		// Send a message with a bad address.
-		conn, errChan := testUDPServer(t, Dispatcher{
+		_, conn, errChan := testUDPServer(t, Dispatcher{
 			"/foo": func(msg Message) error {
 				return nil
 			},
@@ -176,7 +217,7 @@ func TestUDPConnServe_BadInboundAddr(t *testing.T) {
 }
 
 func TestUDPConnSendTo(t *testing.T) {
-	conn, errChan := testUDPServer(t, nil)
+	_, conn, errChan := testUDPServer(t, nil)
 	laddr2, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -200,7 +241,7 @@ func TestUDPConnSendBundle(t *testing.T) {
 			Message{Address: "/server/close"},
 		},
 	}
-	conn, errChan := testUDPServer(t, nil)
+	_, conn, errChan := testUDPServer(t, nil)
 	if err := conn.Send(b); err != nil {
 		t.Fatal(err)
 	}
@@ -210,7 +251,7 @@ func TestUDPConnSendBundle(t *testing.T) {
 }
 
 func TestUDPConnSendBundle_BadTypetag(t *testing.T) {
-	conn, errChan := testUDPServer(t, nil)
+	_, conn, errChan := testUDPServer(t, nil)
 	if err := conn.Send(badBundle{}); err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +259,7 @@ func TestUDPConnSendBundle_BadTypetag(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
-	expected, got := `read packets: read packet: parse message from packet: parse message: read argument 0: typetag "Q": invalid type tag`, err.Error()
+	expected, got := `error serving udp: read packets: read packet: parse message from packet: parse message: read argument 0: typetag "Q": invalid type tag`, err.Error()
 	if expected != got {
 		t.Fatal(err)
 	}
@@ -231,7 +272,7 @@ func TestUDPConnSendBundle_DispatchError(t *testing.T) {
 			Message{Address: "/foo"},
 		},
 	}
-	conn, errChan := testUDPServer(t, Dispatcher{
+	_, conn, errChan := testUDPServer(t, Dispatcher{
 		"/foo": func(msg Message) error {
 			return errors.New("oops")
 		},
@@ -243,7 +284,7 @@ func TestUDPConnSendBundle_DispatchError(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
-	expected, got := `dispatch bundle: oops`, err.Error()
+	expected, got := `error serving udp: dispatch bundle: oops`, err.Error()
 	if expected != got {
 		t.Fatal(err)
 	}

@@ -1,6 +1,7 @@
 package osc
 
 import (
+	"context"
 	"errors"
 	"net"
 	"strings"
@@ -19,6 +20,8 @@ var (
 // Conn defines the methods
 type Conn interface {
 	net.Conn
+
+	Context() context.Context
 	Serve(Dispatcher) error
 	Send(Packet) error
 	SendTo(net.Addr, Packet) error

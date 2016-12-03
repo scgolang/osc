@@ -1,6 +1,7 @@
 package osc
 
 import (
+	"context"
 	"net"
 
 	"github.com/pkg/errors"
@@ -18,6 +19,7 @@ type udpConn interface {
 type UDPConn struct {
 	udpConn
 	closeChan chan struct{}
+	ctx       context.Context
 }
 
 // DialUDP creates a new OSC connection over UDP.
@@ -29,11 +31,17 @@ func DialUDP(network string, laddr, raddr *net.UDPAddr) (*UDPConn, error) {
 	return &UDPConn{
 		udpConn:   conn,
 		closeChan: make(chan struct{}),
+		ctx:       context.Background(),
 	}, nil
 }
 
 // ListenUDP creates a new UDP server.
 func ListenUDP(network string, laddr *net.UDPAddr) (*UDPConn, error) {
+	return ListenUDPContext(context.Background(), network, laddr)
+}
+
+// ListenUDPContext creates a UDP listener that can be canceled with the provided context.
+func ListenUDPContext(ctx context.Context, network string, laddr *net.UDPAddr) (*UDPConn, error) {
 	conn, err := net.ListenUDP(network, laddr)
 	if err != nil {
 		return nil, err
@@ -41,10 +49,31 @@ func ListenUDP(network string, laddr *net.UDPAddr) (*UDPConn, error) {
 	return &UDPConn{
 		udpConn:   conn,
 		closeChan: make(chan struct{}),
+		ctx:       ctx,
 	}, nil
 }
 
+// Context returns the context associated with the conn.
+func (conn *UDPConn) Context() context.Context {
+	return conn.ctx
+}
+
+// Send sends an OSC message over UDP.
+func (conn *UDPConn) Send(p Packet) error {
+	_, err := conn.Write(p.Bytes())
+	return err
+}
+
+// SendTo sends a packet to the given address.
+func (conn *UDPConn) SendTo(addr net.Addr, p Packet) error {
+	_, err := conn.WriteTo(p.Bytes(), addr)
+	return err
+}
+
 // Serve starts dispatching OSC.
+// Any errors returned from a dispatched method will be returned.
+// Note that this means that errors returned from a dispatcher method will kill your server.
+// If context.Canceled or context.DeadlineExceeded are encountered they will be returned directly.
 func (conn *UDPConn) Serve(dispatcher Dispatcher) error {
 	if dispatcher == nil {
 		return ErrNilDispatcher
@@ -66,10 +95,13 @@ func (conn *UDPConn) Serve(dispatcher Dispatcher) error {
 		}
 	}()
 
+	// If the connection is closed or the context is canceled then stop serving.
 	select {
 	case err := <-errChan:
-		return err
+		return errors.Wrap(err, "error serving udp")
 	case <-conn.closeChan:
+	case <-conn.ctx.Done():
+		return conn.ctx.Err()
 	}
 	return nil
 }
@@ -107,16 +139,9 @@ func (conn *UDPConn) serve(dispatcher Dispatcher) error {
 	return nil
 }
 
-// Send sends an OSC message over UDP.
-func (conn *UDPConn) Send(p Packet) error {
-	_, err := conn.Write(p.Bytes())
-	return err
-}
-
-// SendTo sends a packet to the given address.
-func (conn *UDPConn) SendTo(addr net.Addr, p Packet) error {
-	_, err := conn.WriteTo(p.Bytes(), addr)
-	return err
+// SetContext sets the context associated with the conn.
+func (conn *UDPConn) SetContext(ctx context.Context) {
+	conn.ctx = ctx
 }
 
 // Close closes the udp conn.
