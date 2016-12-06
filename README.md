@@ -12,13 +12,13 @@ go install github.com/scgolang/osc
 
 ## Usage
 
-### Server
+See the [ping pong example](https://godoc.org/github.com/scgolang/osc#example-UDPConn--Pingpong).
 
-This is a fully functioning OSC server that uses UDP.
+## Contributing
 
-```go
-package main
+This package aims to be high quality and completely compliant with the [OSC 1.0 Spec](http://opensoundcontrol.org/spec-1_0).
 
-func main() {
-}
-```
+If there is anything missing or this package does not satisfy your use case please open an issue with a detailed description
+of what you are doing and we will try to address it as quickly as possible.
+
+If you wish to contribute code, please write tests that cover _all_ your code.

@@ -55,7 +55,8 @@ func TestDialUDPContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctxTimeout, _ := context.WithTimeout(c.Context(), 20*time.Millisecond)
+	ctxTimeout, cancel := context.WithTimeout(c.Context(), 20*time.Millisecond)
+	defer cancel()
 	c.SetContext(ctxTimeout)
 	if c.Context() != ctxTimeout {
 		t.Fatalf("expected %+v to be %+v", ctxTimeout, c.Context())
@@ -126,7 +127,8 @@ func TestUDPConnServe_ContextTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	timeoutCtx, _ := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
 	server, err := ListenUDPContext(timeoutCtx, "udp", laddr)
 	if err != nil {
 		t.Fatal(err)
