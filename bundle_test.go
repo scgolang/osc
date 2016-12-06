@@ -16,7 +16,7 @@ func TestBundleBytes(t *testing.T) {
 			Input: Bundle{Timetag: 10},
 			Output: bytes.Join([][]byte{
 				ToBytes(BundleTag),
-				[]byte{0, 0, 0, 0, 0, 0, 0, 0x0A},
+				{0, 0, 0, 0, 0, 0, 0, 0x0A},
 			}, []byte{}),
 		},
 		{
@@ -34,12 +34,12 @@ func TestBundleBytes(t *testing.T) {
 			},
 			Output: bytes.Join([][]byte{
 				ToBytes(BundleTag),
-				[]byte{0, 0, 0, 0, 0, 0, 0, 0x0A},
-				[]byte{0, 0, 0, 0x14},
-				[]byte{'/', 'f', 'o', 'o', 0, 0, 0, 0},
-				[]byte{',', TypetagInt, TypetagFloat, 0},
-				[]byte{0, 0, 0, 2},
-				[]byte{0x40, 0xA7, 0x67, 0xA1},
+				{0, 0, 0, 0, 0, 0, 0, 0x0A},
+				{0, 0, 0, 0x14},
+				{'/', 'f', 'o', 'o', 0, 0, 0, 0},
+				{',', TypetagInt, TypetagFloat, 0},
+				{0, 0, 0, 2},
+				{0x40, 0xA7, 0x67, 0xA1},
 			}, []byte{}),
 		},
 		// Bundle within a bundle.
@@ -69,19 +69,19 @@ func TestBundleBytes(t *testing.T) {
 			},
 			Output: bytes.Join([][]byte{
 				ToBytes(BundleTag),
-				[]byte{0, 0, 0, 0, 0, 0, 0, 0x0A}, // Timetag
-				[]byte{0, 0, 0, 0x24},             // Length of first bundle element
+				{0, 0, 0, 0, 0, 0, 0, 0x0A}, // Timetag
+				{0, 0, 0, 0x24},             // Length of first bundle element
 				ToBytes(BundleTag),
-				[]byte{0, 0, 0, 0, 0, 0, 0, 0x14}, // Timetag
-				[]byte{0, 0, 0, 0x10},             // Length of first element of bundle within bundle.
-				[]byte{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
-				[]byte{TypetagPrefix, TypetagFloat, 0, 0},
-				[]byte{0x3F, 0x80, 0x00, 0x00},
-				[]byte{0, 0, 0, 0x14}, // Length of second bundle element
-				[]byte{'/', 'f', 'o', 'o', 0, 0, 0, 0},
-				[]byte{TypetagPrefix, TypetagInt, TypetagFloat, 0},
-				[]byte{0, 0, 0, 2},
-				[]byte{0x40, 0xA7, 0x67, 0xA1},
+				{0, 0, 0, 0, 0, 0, 0, 0x14}, // Timetag
+				{0, 0, 0, 0x10},             // Length of first element of bundle within bundle.
+				{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
+				{TypetagPrefix, TypetagFloat, 0, 0},
+				{0x3F, 0x80, 0x00, 0x00},
+				{0, 0, 0, 0x14}, // Length of second bundle element
+				{'/', 'f', 'o', 'o', 0, 0, 0, 0},
+				{TypetagPrefix, TypetagInt, TypetagFloat, 0},
+				{0, 0, 0, 2},
+				{0x40, 0xA7, 0x67, 0xA1},
 			}, []byte{}),
 		},
 	} {
@@ -172,7 +172,7 @@ func TestParseBundle(t *testing.T) {
 			Input: bytes.Join(
 				[][]byte{
 					append([]byte("#bundle"), 0),
-					[]byte{1, 2, 3, 4, 5, 6, 7},
+					{1, 2, 3, 4, 5, 6, 7},
 				},
 				[]byte{},
 			),
@@ -185,9 +185,9 @@ func TestParseBundle(t *testing.T) {
 			Input: bytes.Join(
 				[][]byte{
 					append([]byte("#bundle"), 0),
-					[]byte{1, 2, 3, 4, 5, 6, 7, 8},
-					[]byte{0, 0, 0, 4},
-					[]byte{'%', 'n', 'o', 0},
+					{1, 2, 3, 4, 5, 6, 7, 8},
+					{0, 0, 0, 4},
+					{'%', 'n', 'o', 0},
 				},
 				[]byte{},
 			),
@@ -201,10 +201,10 @@ func TestParseBundle(t *testing.T) {
 				[][]byte{
 					append([]byte("#bundle"), 0),
 					Timetag(50).Bytes(),
-					[]byte{0, 0, 0, 0x10},
-					[]byte{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
-					[]byte{TypetagPrefix, TypetagInt, 0, 0},
-					[]byte{0, 0, 0, 7},
+					{0, 0, 0, 0x10},
+					{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
+					{TypetagPrefix, TypetagInt, 0, 0},
+					{0, 0, 0, 7},
 				},
 				[]byte{},
 			),
@@ -226,7 +226,7 @@ func TestParseBundle(t *testing.T) {
 				[][]byte{
 					append([]byte("#bundle"), 0),
 					Timetag(50).Bytes(),
-					[]byte{0, 0, 0x10},
+					{0, 0, 0x10},
 				},
 				[]byte{},
 			),
@@ -240,10 +240,10 @@ func TestParseBundle(t *testing.T) {
 				[][]byte{
 					append([]byte("#bundle"), 0),
 					Timetag(50).Bytes(),
-					[]byte{0, 0, 0, 0x20},
-					[]byte{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
-					[]byte{TypetagPrefix, TypetagInt, 0, 0},
-					[]byte{0, 0, 0, 7},
+					{0, 0, 0, 0x20},
+					{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
+					{TypetagPrefix, TypetagInt, 0, 0},
+					{0, 0, 0, 7},
 				},
 				[]byte{},
 			),
@@ -257,14 +257,14 @@ func TestParseBundle(t *testing.T) {
 				[][]byte{
 					append([]byte("#bundle"), 0),
 					Timetag(50).Bytes(),
-					[]byte{0, 0, 0, 0x10},
-					[]byte{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
-					[]byte{TypetagPrefix, TypetagInt, 0, 0},
-					[]byte{0, 0, 0, 7},
-					[]byte{0, 0, 0, 0x10},
-					[]byte{'/', 'b', 'o', 'r', 'k', 0, 0, 0},
-					[]byte{TypetagPrefix, TypetagFloat, 0, 0},
-					[]byte{0x40, 0x48, 0xf5, 0xc3},
+					{0, 0, 0, 0x10},
+					{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
+					{TypetagPrefix, TypetagInt, 0, 0},
+					{0, 0, 0, 7},
+					{0, 0, 0, 0x10},
+					{'/', 'b', 'o', 'r', 'k', 0, 0, 0},
+					{TypetagPrefix, TypetagFloat, 0, 0},
+					{0x40, 0x48, 0xf5, 0xc3},
 				},
 				[]byte{},
 			),
@@ -290,10 +290,10 @@ func TestParseBundle(t *testing.T) {
 				[][]byte{
 					append([]byte("#bundle"), 0),
 					Timetag(50).Bytes(),
-					[]byte{0, 0, 0, 0x10},
-					[]byte{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
-					[]byte{TypetagPrefix, TypetagInt, 'Q', 0},
-					[]byte{0, 0, 0, 7},
+					{0, 0, 0, 0x10},
+					{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
+					{TypetagPrefix, TypetagInt, 'Q', 0},
+					{0, 0, 0, 7},
 				},
 				[]byte{},
 			),
@@ -305,22 +305,22 @@ func TestParseBundle(t *testing.T) {
 		{
 			Input: bytes.Join([][]byte{
 				ToBytes(BundleTag),
-				[]byte{0, 0, 0, 0, 0, 0, 0, 0x0A}, // Timetag
-				[]byte{0, 0, 0, 0x24},             // Length of first bundle element
+				{0, 0, 0, 0, 0, 0, 0, 0x0A}, // Timetag
+				{0, 0, 0, 0x24},             // Length of first bundle element
 				ToBytes(BundleTag),
-				[]byte{0, 0, 0, 0, 0, 0, 0, 0x14}, // Timetag
-				[]byte{0, 0, 0, 0x10},             // Length of first element of bundle within bundle.
-				[]byte{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
-				[]byte{TypetagPrefix, TypetagFloat, 0, 0},
-				[]byte{0x3F, 0x80, 0x00, 0x00},
-				[]byte{0, 0, 0, 0x14}, // Length of second bundle element
-				[]byte{'/', 'f', 'o', 'o', 0, 0, 0, 0},
-				[]byte{TypetagPrefix, TypetagInt, TypetagFloat, 0},
-				[]byte{0, 0, 0, 2},
-				[]byte{0x40, 0xA7, 0x67, 0xA1},
-				[]byte{0, 0, 0, 0x10}, // Length of third bundleelement
+				{0, 0, 0, 0, 0, 0, 0, 0x14}, // Timetag
+				{0, 0, 0, 0x10},             // Length of first element of bundle within bundle.
+				{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
+				{TypetagPrefix, TypetagFloat, 0, 0},
+				{0x3F, 0x80, 0x00, 0x00},
+				{0, 0, 0, 0x14}, // Length of second bundle element
+				{'/', 'f', 'o', 'o', 0, 0, 0, 0},
+				{TypetagPrefix, TypetagInt, TypetagFloat, 0},
+				{0, 0, 0, 2},
+				{0x40, 0xA7, 0x67, 0xA1},
+				{0, 0, 0, 0x10}, // Length of third bundleelement
 				ToBytes(BundleTag),
-				[]byte{0, 0, 0, 0, 0, 0, 0, 0x28}, // Timetag
+				{0, 0, 0, 0, 0, 0, 0, 0x28}, // Timetag
 			}, []byte{}),
 			Expected: Output{
 				bundle: Bundle{
@@ -353,14 +353,14 @@ func TestParseBundle(t *testing.T) {
 		{
 			Input: bytes.Join([][]byte{
 				ToBytes(BundleTag),
-				[]byte{0, 0, 0, 0, 0, 0, 0, 0x0A}, // Timetag
-				[]byte{0, 0, 0, 0x24},             // Length of first bundle element
+				{0, 0, 0, 0, 0, 0, 0, 0x0A}, // Timetag
+				{0, 0, 0, 0x24},             // Length of first bundle element
 				ToBytes(BundleTag),
-				[]byte{0, 0, 0, 0, 0, 0, 0, 0x14}, // Timetag
-				[]byte{0, 0, 0, 0x10},             // Length of first element of bundle within bundle.
-				[]byte{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
-				[]byte{TypetagPrefix, 'Q', 0, 0},
-				[]byte{0x3F, 0x80, 0x00, 0x00},
+				{0, 0, 0, 0, 0, 0, 0, 0x14}, // Timetag
+				{0, 0, 0, 0x10},             // Length of first element of bundle within bundle.
+				{'/', 'f', 'o', 'o', 'b', 'a', 'r', 0},
+				{TypetagPrefix, 'Q', 0, 0},
+				{0x3F, 0x80, 0x00, 0x00},
 			}, []byte{}),
 			Expected: Output{
 				err: errors.New(`read packets: read packet: parse bundle from packet: read packets: read packet: parse message from packet: parse message: read argument 0: typetag "Q": invalid type tag`),
