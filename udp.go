@@ -20,6 +20,7 @@ type UDPConn struct {
 	udpConn
 	closeChan chan struct{}
 	ctx       context.Context
+	errChan   chan error
 }
 
 // DialUDP creates a new OSC connection over UDP.
@@ -37,6 +38,7 @@ func DialUDPContext(ctx context.Context, network string, laddr, raddr *net.UDPAd
 		udpConn:   conn,
 		closeChan: make(chan struct{}),
 		ctx:       ctx,
+		errChan:   make(chan error),
 	}, nil
 }
 
@@ -55,6 +57,7 @@ func ListenUDPContext(ctx context.Context, network string, laddr *net.UDPAddr) (
 		udpConn:   conn,
 		closeChan: make(chan struct{}),
 		ctx:       ctx,
+		errChan:   make(chan error),
 	}, nil
 }
 
@@ -94,9 +97,7 @@ func (conn *UDPConn) Serve(dispatcher Dispatcher) error {
 
 	go func() {
 		for {
-			if err := conn.serve(dispatcher); err != nil {
-				errChan <- err
-			}
+			conn.serve(dispatcher, errChan)
 		}
 	}()
 
@@ -112,36 +113,38 @@ func (conn *UDPConn) Serve(dispatcher Dispatcher) error {
 }
 
 // serve retrieves OSC packets.
-func (conn *UDPConn) serve(dispatcher Dispatcher) error {
+func (conn *UDPConn) serve(dispatcher Dispatcher, errChan chan error) {
 	data := make([]byte, readBufSize)
 
 	_, sender, err := conn.ReadFromUDP(data)
 	if err != nil {
-		return err
+		errChan <- err
 	}
 
 	switch data[0] {
 	case BundleTag[0]:
-		bundle, err := ParseBundle(data, sender)
-		if err != nil {
-			return err
-		}
-		if err := dispatcher.Dispatch(bundle); err != nil {
-			return errors.Wrap(err, "dispatch bundle")
-		}
+		go func() {
+			bundle, err := ParseBundle(data, sender)
+			if err != nil {
+				errChan <- err
+			}
+			if err := dispatcher.Dispatch(bundle); err != nil {
+				errChan <- errors.Wrap(err, "dispatch bundle")
+			}
+		}()
 	case MessageChar:
-		msg, err := ParseMessage(data, sender)
-		if err != nil {
-			return err
-		}
-		if err := dispatcher.Invoke(msg); err != nil {
-			return errors.Wrap(err, "dispatch message")
-		}
+		go func() {
+			msg, err := ParseMessage(data, sender)
+			if err != nil {
+				errChan <- err
+			}
+			if err := dispatcher.Invoke(msg); err != nil {
+				errChan <- errors.Wrap(err, "dispatch message")
+			}
+		}()
 	default:
-		return ErrParse
+		errChan <- ErrParse
 	}
-
-	return nil
 }
 
 // SetContext sets the context associated with the conn.
