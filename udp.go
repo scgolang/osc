@@ -12,6 +12,7 @@ type udpConn interface {
 	net.Conn
 
 	ReadFromUDP([]byte) (int, *net.UDPAddr, error)
+	SetWriteBuffer(bytes int) error
 	WriteTo([]byte, net.Addr) (int, error)
 }
 
@@ -34,12 +35,13 @@ func DialUDPContext(ctx context.Context, network string, laddr, raddr *net.UDPAd
 	if err != nil {
 		return nil, err
 	}
-	return &UDPConn{
+	uc := &UDPConn{
 		udpConn:   conn,
 		closeChan: make(chan struct{}),
 		ctx:       ctx,
 		errChan:   make(chan error),
-	}, nil
+	}
+	return uc.initialize()
 }
 
 // ListenUDP creates a new UDP server.
@@ -53,12 +55,21 @@ func ListenUDPContext(ctx context.Context, network string, laddr *net.UDPAddr) (
 	if err != nil {
 		return nil, err
 	}
-	return &UDPConn{
+	uc := &UDPConn{
 		udpConn:   conn,
 		closeChan: make(chan struct{}),
 		ctx:       ctx,
 		errChan:   make(chan error),
-	}, nil
+	}
+	return uc.initialize()
+}
+
+// initialize initializes a UDP connection.
+func (conn *UDPConn) initialize() (*UDPConn, error) {
+	if err := conn.udpConn.SetWriteBuffer(bufSize); err != nil {
+		return nil, errors.Wrap(err, "setting write buffer size")
+	}
+	return conn, nil
 }
 
 // Context returns the context associated with the conn.
@@ -114,7 +125,7 @@ func (conn *UDPConn) Serve(dispatcher Dispatcher) error {
 
 // serve retrieves OSC packets.
 func (conn *UDPConn) serve(dispatcher Dispatcher, errChan chan error) {
-	data := make([]byte, readBufSize)
+	data := make([]byte, bufSize)
 
 	_, sender, err := conn.ReadFromUDP(data)
 	if err != nil {

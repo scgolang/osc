@@ -36,6 +36,17 @@ func TestDialUDP(t *testing.T) {
 	}
 }
 
+func TestDialUDPSetWriteBufferError(t *testing.T) {
+	uc := &UDPConn{udpConn: errConn{}}
+	_, err := uc.initialize()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if expected, got := `setting write buffer size: derp`, err.Error(); expected != got {
+		t.Fatalf("expected %s, got %s", expected, got)
+	}
+}
+
 func TestListenUDP(t *testing.T) {
 	if _, err := ListenUDP("asdfiauosweif", nil); err == nil {
 		t.Fatal("expected error, got nil")
@@ -114,12 +125,17 @@ func TestUDPConnSend_OK(t *testing.T) {
 	}
 }
 
+// errConn is an implementation of the udpConn interface that returns errors from all it's methods.
 type errConn struct {
 	udpConn
 }
 
 func (e errConn) ReadFromUDP(b []byte) (int, *net.UDPAddr, error) {
 	return 0, nil, errors.New("oops")
+}
+
+func (e errConn) SetWriteBuffer(bytes int) error {
+	return errors.New("derp")
 }
 
 func TestUDPConnServe_ContextTimeout(t *testing.T) {

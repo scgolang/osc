@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	readBufSize = 4096
+	bufSize = 4096 // Size of read and write buffers.
 )
 
 // Common errors.
