@@ -15,8 +15,18 @@ var (
 // Method is an OSC method
 type Method func(msg Message) error
 
+// Handle handles an OSC message.
+func (method Method) Handle(m Message) error {
+	return method(m)
+}
+
+// MessageHandler is any type that can handle an OSC message.
+type MessageHandler interface {
+	Handle(Message) error
+}
+
 // Dispatcher dispatches OSC packets.
-type Dispatcher map[string]Method
+type Dispatcher map[string]MessageHandler
 
 // Dispatch invokes an OSC bundle's messages.
 func (d Dispatcher) Dispatch(b Bundle) error {
@@ -60,13 +70,13 @@ func (d Dispatcher) invoke(p Packet) error {
 
 // Invoke invokes an OSC message.
 func (d Dispatcher) Invoke(msg Message) error {
-	for address, method := range d {
+	for address, handler := range d {
 		matched, err := msg.Match(address)
 		if err != nil {
 			return err
 		}
 		if matched {
-			return method(msg)
+			return handler.Handle(msg)
 		}
 	}
 	return nil

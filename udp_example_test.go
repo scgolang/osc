@@ -67,33 +67,33 @@ func ExampleUDPConn_pingpong() {
 
 func serverDispatch(server *UDPConn, errChan chan error) {
 	errChan <- server.Serve(Dispatcher{
-		"/ping": func(msg Message) error {
+		"/ping": Method(func(msg Message) error {
 			fmt.Println("Server received ping.")
 			return server.SendTo(msg.Sender, Message{Address: "/pong"})
-		},
-		"/close": func(msg Message) error {
+		}),
+		"/close": Method(func(msg Message) error {
 			if err := server.SendTo(msg.Sender, Message{Address: "/close"}); err != nil {
 				_ = server.Close()
 				return err
 			}
 			fmt.Println("Server closing.")
 			return server.Close()
-		},
+		}),
 	})
 }
 
 func clientDispatch(client *UDPConn, errChan chan error, pongChan chan struct{}, closeChan chan struct{}) {
 	errChan <- client.Serve(Dispatcher{
-		"/pong": func(msg Message) error {
+		"/pong": Method(func(msg Message) error {
 			fmt.Println("Client received pong.")
 			close(pongChan)
 			return nil
-		},
-		"/close": func(msg Message) error {
+		}),
+		"/close": Method(func(msg Message) error {
 			fmt.Println("Client closing.")
 			close(closeChan)
 			return client.Close()
-		},
+		}),
 	})
 }
 

@@ -21,10 +21,10 @@ func TestInvalidAddress(t *testing.T) {
 	}
 	defer func() { _ = server.Close() }() // Best effort.
 
-	if err := server.Serve(map[string]Method{
-		"/[": func(msg Message) error {
+	if err := server.Serve(Dispatcher{
+		"/[": Method(func(msg Message) error {
 			return nil
-		},
+		}),
 	}); err != ErrInvalidAddress {
 		t.Fatal("expected invalid address error")
 	}
@@ -95,9 +95,9 @@ func testUDPServer(t *testing.T, dispatcher Dispatcher) (*UDPConn, *UDPConn, cha
 	if dispatcher == nil {
 		dispatcher = Dispatcher{}
 	}
-	dispatcher["/server/close"] = func(msg Message) error {
+	dispatcher["/server/close"] = Method(func(msg Message) error {
 		return server.Close()
-	}
+	})
 	errChan := make(chan error)
 
 	go func() {
@@ -180,10 +180,10 @@ func TestUDPConnServe_ReadError(t *testing.T) {
 		ctx:     context.Background(),
 	}
 	go func() {
-		errChan <- server.Serve(map[string]Method{
-			"/close": func(msg Message) error {
+		errChan <- server.Serve(Dispatcher{
+			"/close": Method(func(msg Message) error {
 				return server.Close()
-			},
+			}),
 		})
 	}()
 
@@ -227,9 +227,9 @@ func TestUDPConnServe_BadInboundAddr(t *testing.T) {
 	} {
 		// Send a message with a bad address.
 		_, conn, errChan := testUDPServer(t, Dispatcher{
-			"/foo": func(msg Message) error {
+			"/foo": Method(func(msg Message) error {
 				return nil
-			},
+			}),
 		})
 		if err := conn.Send(packet); err != nil {
 			t.Fatal(err)
@@ -297,9 +297,9 @@ func TestUDPConnSendBundle_DispatchError(t *testing.T) {
 		},
 	}
 	_, conn, errChan := testUDPServer(t, Dispatcher{
-		"/foo": func(msg Message) error {
+		"/foo": Method(func(msg Message) error {
 			return errors.New("oops")
-		},
+		}),
 	})
 	if err := conn.Send(b); err != nil {
 		t.Fatal(err)

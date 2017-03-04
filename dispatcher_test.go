@@ -11,10 +11,10 @@ import (
 func TestDispatcherDispatchOK(t *testing.T) {
 	c := make(chan struct{})
 	d := Dispatcher{
-		"/bar": func(msg Message) error {
+		"/bar": Method(func(msg Message) error {
 			close(c)
 			return nil
-		},
+		}),
 	}
 	later := time.Now().Add(20 * time.Millisecond)
 	b := Bundle{
@@ -32,9 +32,9 @@ func TestDispatcherDispatchOK(t *testing.T) {
 // Test a method that returns an error.
 func TestDispatcherDispatchError(t *testing.T) {
 	d := Dispatcher{
-		"/foo": func(msg Message) error {
+		"/foo": Method(func(msg Message) error {
 			return errors.New("oops")
-		},
+		}),
 	}
 	later := time.Now().Add(20 * time.Millisecond)
 	b := Bundle{
@@ -51,10 +51,10 @@ func TestDispatcherDispatchError(t *testing.T) {
 func TestDispatcherDispatchNestedBundle(t *testing.T) {
 	c := make(chan struct{})
 	d := Dispatcher{
-		"/foo": func(msg Message) error {
+		"/foo": Method(func(msg Message) error {
 			close(c)
 			return nil
-		},
+		}),
 	}
 	later := time.Now().Add(20 * time.Millisecond)
 	b := Bundle{
@@ -76,9 +76,9 @@ func TestDispatcherDispatchNestedBundle(t *testing.T) {
 
 func TestDispatcherMiss(t *testing.T) {
 	d := Dispatcher{
-		"/foo": func(msg Message) error {
+		"/foo": Method(func(msg Message) error {
 			return nil
-		},
+		}),
 	}
 	b := Bundle{
 		Timetag: FromTime(time.Now()),
@@ -90,12 +90,12 @@ func TestDispatcherMiss(t *testing.T) {
 
 func TestDispatcherInvoke(t *testing.T) {
 	d := Dispatcher{
-		"/foo": func(msg Message) error {
+		"/foo": Method(func(msg Message) error {
 			return errors.New("foo error")
-		},
-		"/bar": func(msg Message) error {
+		}),
+		"/bar": Method(func(msg Message) error {
 			return nil
-		},
+		}),
 	}
 	msg := Message{Address: "/foo"}
 	if err := d.Invoke(msg); err == nil {
