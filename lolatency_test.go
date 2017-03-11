@@ -36,7 +36,7 @@ func BenchmarkMessageSend(b *testing.B) {
 		ch  = make(chan struct{})
 		val = struct{}{}
 	)
-	go srv.Serve(osc.Dispatcher{
+	go srv.Serve(1, osc.Dispatcher{
 		"/ping": osc.Method(func(m osc.Message) error {
 			ch <- val
 			return nil
@@ -74,7 +74,7 @@ func BenchmarkMessageSendOneArgument(b *testing.B) {
 		ch  = make(chan struct{})
 		val = struct{}{}
 	)
-	go srv.Serve(osc.Dispatcher{
+	go srv.Serve(1, osc.Dispatcher{
 		"/ping": osc.Method(func(m osc.Message) error {
 			if _, err := m.Arguments[0].ReadInt32(); err != nil {
 				return err

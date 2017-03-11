@@ -93,25 +93,32 @@ func (conn *UDPConn) SendTo(addr net.Addr, p Packet) error {
 // Any errors returned from a dispatched method will be returned.
 // Note that this means that errors returned from a dispatcher method will kill your server.
 // If context.Canceled or context.DeadlineExceeded are encountered they will be returned directly.
-func (conn *UDPConn) Serve(dispatcher Dispatcher) error {
+func (conn *UDPConn) Serve(numWorkers int, dispatcher Dispatcher) error {
 	if dispatcher == nil {
 		return ErrNilDispatcher
 	}
-
 	for addr := range dispatcher {
 		if err := ValidateAddress(addr); err != nil {
 			return err
 		}
 	}
-
-	errChan := make(chan error)
-
+	var (
+		errChan = make(chan error, numWorkers)
+		ready   = make(chan Worker)
+	)
+	for i := 0; i < numWorkers; i++ {
+		go Worker{
+			DataChan:   make(chan Incoming),
+			Dispatcher: dispatcher,
+			ErrChan:    errChan,
+			Ready:      ready,
+		}.Run()
+	}
 	go func() {
 		for {
-			conn.serve(dispatcher, errChan)
+			errChan <- conn.serve(ready)
 		}
 	}()
-
 	// If the connection is closed or the context is canceled then stop serving.
 	select {
 	case err := <-errChan:
@@ -124,38 +131,15 @@ func (conn *UDPConn) Serve(dispatcher Dispatcher) error {
 }
 
 // serve retrieves OSC packets.
-func (conn *UDPConn) serve(dispatcher Dispatcher, errChan chan error) {
+func (conn *UDPConn) serve(ready <-chan Worker) error {
 	data := make([]byte, bufSize)
-
 	_, sender, err := conn.ReadFromUDP(data)
 	if err != nil {
-		errChan <- err
+		return err
 	}
-
-	switch data[0] {
-	case BundleTag[0]:
-		go func() {
-			bundle, err := ParseBundle(data, sender)
-			if err != nil {
-				errChan <- err
-			}
-			if err := dispatcher.Dispatch(bundle); err != nil {
-				errChan <- errors.Wrap(err, "dispatch bundle")
-			}
-		}()
-	case MessageChar:
-		go func() {
-			msg, err := ParseMessage(data, sender)
-			if err != nil {
-				errChan <- err
-			}
-			if err := dispatcher.Invoke(msg); err != nil {
-				errChan <- errors.Wrap(err, "dispatch message")
-			}
-		}()
-	default:
-		errChan <- ErrParse
-	}
+	worker := <-ready
+	worker.DataChan <- Incoming{Data: data, Sender: sender}
+	return nil
 }
 
 // SetContext sets the context associated with the conn.
@@ -167,4 +151,10 @@ func (conn *UDPConn) SetContext(ctx context.Context) {
 func (conn *UDPConn) Close() error {
 	close(conn.closeChan)
 	return conn.udpConn.Close()
+}
+
+// Incoming represents incoming data.
+type Incoming struct {
+	Data   []byte
+	Sender net.Addr
 }
