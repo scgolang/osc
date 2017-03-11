@@ -12,6 +12,9 @@ import (
 // For a sample rate of 48kHz this would come out to about 4 samples.
 // Thus we should not expect that it is currently possible to achieve sample accurate synchronization with OSC over localhost.
 // But 80us latency is not bad!
+//
+// Update 3/11/2017 [briansorahan]
+// This benchmarks around 100us on my Dell Latitude E6510 with a single-core Core i7 @ 2.8GHz
 func BenchmarkMessageSend(b *testing.B) {
 	laddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
 	if err != nil {
