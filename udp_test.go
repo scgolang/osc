@@ -234,6 +234,8 @@ func TestUDPConnServe_BadInboundAddr(t *testing.T) {
 		if err := conn.Send(packet); err != nil {
 			t.Fatal(err)
 		}
+		t.Logf("sent message %s", string(packet.Bytes()))
+
 		if err := <-errChan; err == nil {
 			t.Fatalf("(packet %d) expected error, got nil", i)
 		}

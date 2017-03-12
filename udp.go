@@ -103,8 +103,8 @@ func (conn *UDPConn) Serve(numWorkers int, dispatcher Dispatcher) error {
 		}
 	}
 	var (
-		errChan = make(chan error, numWorkers)
-		ready   = make(chan Worker)
+		errChan = make(chan error)
+		ready   = make(chan Worker, numWorkers)
 	)
 	for i := 0; i < numWorkers; i++ {
 		go Worker{
@@ -116,7 +116,9 @@ func (conn *UDPConn) Serve(numWorkers int, dispatcher Dispatcher) error {
 	}
 	go func() {
 		for {
-			errChan <- conn.serve(ready)
+			if err := conn.serve(ready); err != nil {
+				errChan <- err
+			}
 		}
 	}()
 	// If the connection is closed or the context is canceled then stop serving.
