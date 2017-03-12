@@ -24,7 +24,7 @@ type Conn interface {
 	net.Conn
 
 	Context() context.Context
-	Serve(Dispatcher) error
+	Serve(int, Dispatcher) error
 	Send(Packet) error
 	SendTo(net.Addr, Packet) error
 }
