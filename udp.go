@@ -3,6 +3,7 @@ package osc
 import (
 	"context"
 	"net"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -117,6 +118,9 @@ func (conn *UDPConn) Serve(numWorkers int, dispatcher Dispatcher) error {
 	go func() {
 		for {
 			if err := conn.serve(ready); err != nil {
+				if err == errClosed {
+					return
+				}
 				errChan <- err
 			}
 		}
@@ -137,6 +141,11 @@ func (conn *UDPConn) serve(ready <-chan Worker) error {
 	data := make([]byte, bufSize)
 	_, sender, err := conn.ReadFromUDP(data)
 	if err != nil {
+		// Tried non-blocking select on closeChan right before ReadFromUDP
+		// but that didn't stop us from reading a closed connection. [briansorahan]
+		if strings.Contains(err.Error(), "use of closed network connection") {
+			return errClosed
+		}
 		return err
 	}
 	worker := <-ready
@@ -160,3 +169,5 @@ type Incoming struct {
 	Data   []byte
 	Sender net.Addr
 }
+
+var errClosed = errors.New("conn is closed")
