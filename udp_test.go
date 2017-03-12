@@ -101,7 +101,10 @@ func testUDPServer(t *testing.T, dispatcher Dispatcher) (*UDPConn, *UDPConn, cha
 	errChan := make(chan error)
 
 	go func() {
-		errChan <- server.Serve(1, dispatcher)
+		if err := server.Serve(1, dispatcher); err != nil {
+			errChan <- err
+		}
+		close(errChan)
 	}()
 
 	raddr, err := net.ResolveUDPAddr("udp", server.LocalAddr().String())
