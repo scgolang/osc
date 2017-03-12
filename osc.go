@@ -146,23 +146,8 @@ func serve(r readSender, numWorkers int, dispatcher Dispatcher) error {
 			Ready:      ready,
 		}.Run()
 	}
-	go func() {
-		for {
-			data := make([]byte, bufSize)
-			_, sender, err := r.read(data)
-			if err != nil {
-				// Tried non-blocking select on closeChan right before ReadFromUDP
-				// but that didn't stop us from reading a closed connection. [briansorahan]
-				if strings.Contains(err.Error(), "use of closed network connection") {
-					return
-				}
-				errChan <- err
-				return
-			}
-			worker := <-ready
-			worker.DataChan <- Incoming{Data: data, Sender: sender}
-		}
-	}()
+	go workerLoop(r, ready, errChan)
+
 	// If the connection is closed or the context is canceled then stop serving.
 	select {
 	case err := <-errChan:
@@ -172,4 +157,26 @@ func serve(r readSender, numWorkers int, dispatcher Dispatcher) error {
 		return r.Context().Err()
 	}
 	return nil
+}
+
+func workerLoop(r readSender, ready chan Worker, errChan chan error) {
+	for {
+		data := make([]byte, bufSize)
+		_, sender, err := r.read(data)
+		if err != nil {
+			// Tried non-blocking select on closeChan right before ReadFromUDP
+			// but that didn't stop us from reading a closed connection. [briansorahan]
+			if strings.Contains(err.Error(), "use of closed network connection") {
+				return
+			}
+			errChan <- err
+			return
+		}
+
+		// Get the next worker.
+		worker := <-ready
+
+		// Assign them the data we just read.
+		worker.DataChan <- Incoming{Data: data, Sender: sender}
+	}
 }
