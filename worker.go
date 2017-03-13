@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Worker is a worker who can process OSC messages.
 type Worker struct {
 	DataChan   chan Incoming
 	Dispatcher Dispatcher
@@ -11,6 +12,7 @@ type Worker struct {
 	Ready      chan<- Worker
 }
 
+// Run runs the worker.
 func (w Worker) Run() {
 	w.Ready <- w
 

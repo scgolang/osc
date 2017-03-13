@@ -114,6 +114,7 @@ func (conn *UnixConn) Serve(numWorkers int, dispatcher Dispatcher) error {
 	return serve(conn, numWorkers, dispatcher)
 }
 
+// TempSocket creates an absolute path to a temporary socket file.
 func TempSocket() string {
 	return filepath.Join(os.TempDir(), ulid.New().String()) + ".sock"
 }

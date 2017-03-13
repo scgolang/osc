@@ -108,8 +108,6 @@ type netWriter interface {
 	WriteTo([]byte, net.Addr) (int, error)
 }
 
-var errClosed = errors.New("conn is closed")
-
 func checkDispatcher(dispatcher Dispatcher) error {
 	if dispatcher == nil {
 		return ErrNilDispatcher
