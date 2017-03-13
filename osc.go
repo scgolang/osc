@@ -2,7 +2,12 @@ package osc
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
+	"net"
+	"strings"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -90,4 +95,88 @@ func ReadBlob(length int32, data []byte) ([]byte, int64) {
 		}
 	}
 	return data[:idx], int64(idx)
+}
+
+// Incoming represents incoming data.
+type Incoming struct {
+	Data   []byte
+	Sender net.Addr
+}
+
+type netWriter interface {
+	SetWriteBuffer(bytes int) error
+	WriteTo([]byte, net.Addr) (int, error)
+}
+
+var errClosed = errors.New("conn is closed")
+
+func checkDispatcher(dispatcher Dispatcher) error {
+	if dispatcher == nil {
+		return ErrNilDispatcher
+	}
+	for addr := range dispatcher {
+		if err := ValidateAddress(addr); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// readSender knows how to read bytes and return the net.Addr
+// of the sender of the bytes.
+type readSender interface {
+	CloseChan() <-chan struct{}
+	Context() context.Context
+	read([]byte) (int, net.Addr, error)
+}
+
+func serve(r readSender, numWorkers int, dispatcher Dispatcher) error {
+	if err := checkDispatcher(dispatcher); err != nil {
+		return err
+	}
+	var (
+		errChan = make(chan error)
+		ready   = make(chan Worker, numWorkers)
+	)
+	for i := 0; i < numWorkers; i++ {
+		go Worker{
+			DataChan:   make(chan Incoming),
+			Dispatcher: dispatcher,
+			ErrChan:    errChan,
+			Ready:      ready,
+		}.Run()
+	}
+	go workerLoop(r, ready, errChan)
+
+	// If the connection is closed or the context is canceled then stop serving.
+	select {
+	case err := <-errChan:
+		return errors.Wrap(err, "error serving udp")
+	case <-r.CloseChan():
+	case <-r.Context().Done():
+		return r.Context().Err()
+	}
+	return nil
+}
+
+func workerLoop(r readSender, ready chan Worker, errChan chan error) {
+	for {
+		data := make([]byte, bufSize)
+		_, sender, err := r.read(data)
+		if err != nil {
+			// Tried non-blocking select on closeChan right before ReadFromUDP
+			// but that didn't stop us from reading a closed connection. [briansorahan]
+			if strings.Contains(err.Error(), "use of closed network connection") {
+				return
+			}
+			errChan <- err
+			return
+		}
+
+		// Get the next worker.
+		worker := <-ready
+
+		// Assign them the data we just read.
+		worker.DataChan <- Incoming{Data: data, Sender: sender}
+	}
 }
