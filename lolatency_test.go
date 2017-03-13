@@ -15,7 +15,7 @@ import (
 //
 // Update 3/11/2017 [briansorahan]
 // This benchmarks around 100us on my Dell Latitude E6510 with a single-core Core i7 @ 2.8GHz
-func BenchmarkMessageSend(b *testing.B) {
+func BenchmarkUDPSend(b *testing.B) {
 	laddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
 	if err != nil {
 		b.Fatal(err)
@@ -53,7 +53,7 @@ func BenchmarkMessageSend(b *testing.B) {
 }
 
 // Including a single argument does not seem to have much effect on latency [briansorahan].
-func BenchmarkMessageSendOneArgument(b *testing.B) {
+func BenchmarkUDPSendOneArgument(b *testing.B) {
 	laddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
 	if err != nil {
 		b.Fatal(err)
@@ -89,6 +89,45 @@ func BenchmarkMessageSendOneArgument(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		msg.Arguments[0] = osc.Int(i)
+		conn.Send(msg)
+		<-ch
+	}
+}
+
+func BenchmarkUnixSend(b *testing.B) {
+	const network = "unixgram"
+
+	laddr, err := net.ResolveUnixAddr(network, osc.TempSocket())
+	if err != nil {
+		b.Fatal(err)
+	}
+	srv, err := osc.ListenUnix("unixgram", laddr)
+	if err != nil {
+		b.Fatal(err)
+	}
+	raddr, err := net.ResolveUnixAddr(network, srv.LocalAddr().String())
+	if err != nil {
+		b.Fatal(err)
+	}
+	conn, err := osc.DialUnix(network, nil, raddr)
+	if err != nil {
+		b.Fatal(err)
+	}
+	var (
+		ch  = make(chan struct{})
+		val = struct{}{}
+	)
+	go srv.Serve(8, osc.Dispatcher{
+		"/ping": osc.Method(func(m osc.Message) error {
+			ch <- val
+			return nil
+		}),
+	})
+	msg := osc.Message{Address: "/ping"}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
 		conn.Send(msg)
 		<-ch
 	}
