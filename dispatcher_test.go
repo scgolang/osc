@@ -23,7 +23,7 @@ func TestDispatcherDispatchOK(t *testing.T) {
 			Message{Address: "/bar"},
 		},
 	}
-	if err := d.Dispatch(b); err != nil {
+	if err := d.Dispatch(b, false); err != nil {
 		t.Fatal(err)
 	}
 	<-c
@@ -43,7 +43,7 @@ func TestDispatcherDispatchError(t *testing.T) {
 			Message{Address: "/foo"},
 		},
 	}
-	if err := d.Dispatch(b); err == nil {
+	if err := d.Dispatch(b, false); err == nil {
 		t.Fatal("expected error, got nil")
 	}
 }
@@ -68,7 +68,7 @@ func TestDispatcherDispatchNestedBundle(t *testing.T) {
 			},
 		},
 	}
-	if err := d.Dispatch(b); err != nil {
+	if err := d.Dispatch(b, false); err != nil {
 		t.Fatal(err)
 	}
 	<-c
@@ -83,7 +83,7 @@ func TestDispatcherMiss(t *testing.T) {
 	b := Bundle{
 		Timetag: FromTime(time.Now()),
 	}
-	if err := d.Dispatch(b); err != nil {
+	if err := d.Dispatch(b, false); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -98,20 +98,20 @@ func TestDispatcherInvoke(t *testing.T) {
 		}),
 	}
 	msg := Message{Address: "/foo"}
-	if err := d.Invoke(msg); err == nil {
+	if err := d.Invoke(msg, false); err == nil {
 		t.Fatal("expected error, got nil")
 	}
 	badMsg := Message{Address: "/["}
-	if err := d.Invoke(badMsg); err == nil {
+	if err := d.Invoke(badMsg, false); err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if err := d.Invoke(Message{Address: "/bar"}); err != nil {
+	if err := d.Invoke(Message{Address: "/bar"}, false); err != nil {
 		t.Fatal(err)
 	}
-	if err := d.Invoke(Message{Address: "/baz"}); err != nil {
+	if err := d.Invoke(Message{Address: "/baz"}, false); err != nil {
 		t.Fatal(err)
 	}
-	if err := d.invoke(badPacket{}); err == nil {
+	if err := d.invoke(badPacket{}, false); err == nil {
 		t.Fatal("expected error, got nil")
 	}
 }

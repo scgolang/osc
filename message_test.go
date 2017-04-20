@@ -85,7 +85,7 @@ func TestMatch(t *testing.T) {
 		{"/path/to/m[aei]thod", "/path/to/method"},
 	} {
 		msg := Message{Address: pair[0]}
-		match, err := msg.Match(pair[1])
+		match, err := msg.Match(pair[1], false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -103,7 +103,7 @@ func TestMatch(t *testing.T) {
 		{"/path/to/[domet]", "/path/to/method"},
 	} {
 		msg := Message{Address: pair[0]}
-		match, err := msg.Match(pair[1])
+		match, err := msg.Match(pair[1], false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -113,7 +113,7 @@ func TestMatch(t *testing.T) {
 	}
 
 	msg := Message{Address: `/[`}
-	if _, err := msg.Match(`/a`); err == nil {
+	if _, err := msg.Match(`/a`, false); err == nil {
 		t.Fatalf("expected error, got nil")
 	}
 }

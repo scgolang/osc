@@ -19,9 +19,10 @@ type udpConn interface {
 type UDPConn struct {
 	udpConn
 
-	closeChan chan struct{}
-	ctx       context.Context
-	errChan   chan error
+	closeChan  chan struct{}
+	ctx        context.Context
+	errChan    chan error
+	exactMatch bool
 }
 
 // DialUDP creates a new OSC connection over UDP.
@@ -111,10 +112,18 @@ func (conn *UDPConn) SendTo(addr net.Addr, p Packet) error {
 // Note that this means that errors returned from a dispatcher method will kill your server.
 // If context.Canceled or context.DeadlineExceeded are encountered they will be returned directly.
 func (conn *UDPConn) Serve(numWorkers int, dispatcher Dispatcher) error {
-	return serve(conn, numWorkers, dispatcher)
+	return serve(conn, numWorkers, conn.exactMatch, dispatcher)
 }
 
 // SetContext sets the context associated with the conn.
 func (conn *UDPConn) SetContext(ctx context.Context) {
 	conn.ctx = ctx
+}
+
+// SetExactMatch changes the behavior of the Serve method so that
+// messages will only be dispatched to methods whose addresses
+// match the message's address exactly.
+// This should provide some performance improvement.
+func (conn *UDPConn) SetExactMatch(value bool) {
+	conn.exactMatch = value
 }
