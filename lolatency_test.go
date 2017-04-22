@@ -132,3 +132,46 @@ func BenchmarkUnixSend(b *testing.B) {
 		<-ch
 	}
 }
+
+func BenchmarkUDPSendExactMatch(b *testing.B) {
+	laddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
+	if err != nil {
+		b.Fatal(err)
+	}
+	srv, err := osc.ListenUDP("udp", laddr)
+	if err != nil {
+		b.Fatal(err)
+	}
+	raddr, err := net.ResolveUDPAddr("udp", srv.LocalAddr().String())
+	if err != nil {
+		b.Fatal(err)
+	}
+	conn, err := osc.DialUDP("udp", nil, raddr)
+	if err != nil {
+		b.Fatal(err)
+	}
+	var (
+		ch  = make(chan struct{})
+		val = struct{}{}
+	)
+	go srv.Serve(1, osc.Dispatcher{
+		"/ping": osc.Method(func(m osc.Message) error {
+			if _, err := m.Arguments[0].ReadInt32(); err != nil {
+				return err
+			}
+			ch <- val
+			return nil
+		}),
+	})
+	msg := osc.Message{Address: "/ping", Arguments: osc.Arguments{osc.Int(0)}}
+
+	srv.SetExactMatch(true)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		msg.Arguments[0] = osc.Int(i)
+		conn.Send(msg)
+		<-ch
+	}
+}
