@@ -118,6 +118,39 @@ func TestMatch(t *testing.T) {
 	}
 }
 
+func TestMatchExactly(t *testing.T) {
+	for i, testcase := range []struct {
+		Msg         Message
+		Addr        string
+		ShouldMatch bool
+	}{
+		{
+			Msg:         Message{Address: "/foo/bar"},
+			Addr:        "/foo/bar",
+			ShouldMatch: true,
+		},
+	} {
+		var (
+			msg  = testcase.Msg
+			addr = testcase.Addr
+		)
+		match, err := msg.Match(addr, true)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+		if testcase.ShouldMatch {
+			if !match {
+				t.Fatalf("(test case %d) expected %#v to match address %s", i, msg, addr)
+			}
+		} else {
+			if match {
+				t.Fatalf("(test case %d) expected %#v to not match address %s", i, msg, addr)
+			}
+		}
+	}
+}
+
 func TestGetRegex(t *testing.T) {
 	if _, err := GetRegex(`[`); err == nil {
 		t.Fatalf("expected error, got nil")

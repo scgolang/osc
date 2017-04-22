@@ -119,13 +119,17 @@ func testUDPServer(t *testing.T, dispatcher Dispatcher) (*UDPConn, *UDPConn, cha
 }
 
 func TestUDPConnSend_OK(t *testing.T) {
-	_, conn, errChan := testUDPServer(t, nil)
+	server, conn, errChan := testUDPServer(t, nil)
+	server.SetExactMatch(true)
 	if err := conn.Send(Message{Address: "/server/close"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := <-errChan; err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestUDPConnSend_ExactMatch(t *testing.T) {
 }
 
 // errUDPConn is an implementation of the udpConn interface that returns errors from all it's methods.

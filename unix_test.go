@@ -36,6 +36,7 @@ func TestUnixSend(t *testing.T) {
 			return nil
 		}),
 	})
+	server.SetExactMatch(true)
 	addr, err := net.ResolveUnixAddr("unixgram", server.LocalAddr().String())
 	if err != nil {
 		t.Fatal(err)
