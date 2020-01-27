@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func ExampleUDPConn_pingpong() {
+func Example_pingpong() {
 	errChan := make(chan error)
 
 	// Setup the server.
