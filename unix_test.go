@@ -30,7 +30,7 @@ func tmpListener(t *testing.T, dispatcher Dispatcher) (*UnixConn, chan error) {
 func TestUnixSend(t *testing.T) {
 	fooch := make(chan struct{})
 
-	server, errChan := tmpListener(t, Dispatcher{
+	server, errChan := tmpListener(t, MessageHandlers{
 		"/foo": Method(func(m Message) error {
 			close(fooch)
 			return nil
@@ -113,7 +113,7 @@ func TestDialUnixSetWriteBufferError(t *testing.T) {
 func TestUnixSendTo(t *testing.T) {
 	fooch := make(chan struct{})
 
-	server, errChan := tmpListener(t, Dispatcher{
+	server, errChan := tmpListener(t, MessageHandlers{
 		"/foo": Method(func(m Message) error {
 			close(fooch)
 			return nil

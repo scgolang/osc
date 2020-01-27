@@ -112,9 +112,12 @@ func checkDispatcher(dispatcher Dispatcher) error {
 	if dispatcher == nil {
 		return ErrNilDispatcher
 	}
-	for addr := range dispatcher {
-		if err := ValidateAddress(addr); err != nil {
-			return err
+	messageHandlers, ok := dispatcher.(MessageHandlers)
+	if ok {
+		for addr := range messageHandlers {
+			if err := ValidateAddress(addr); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

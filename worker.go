@@ -17,6 +17,7 @@ type Worker struct {
 func (w Worker) Run() {
 	w.Ready <- w
 
+DataLoop:
 	for incoming := range w.DataChan {
 		data := incoming.Data
 
@@ -33,9 +34,15 @@ func (w Worker) Run() {
 			msg, err := ParseMessage(data, incoming.Sender)
 			if err != nil {
 				w.ErrChan <- err
+				continue DataLoop
+			}
+			if err := ValidateAddress(msg.Address); err != nil {
+				w.ErrChan <- err
+				continue DataLoop
 			}
 			if err := w.Dispatcher.Invoke(msg, w.ExactMatch); err != nil {
 				w.ErrChan <- errors.Wrap(err, "dispatch message")
+				continue DataLoop
 			}
 		default:
 			w.ErrChan <- ErrParse
