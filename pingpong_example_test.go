@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func Example_ping_pong() {
+func ExamplePingPong() {
 	errChan := make(chan error)
 
 	// Setup the server.
