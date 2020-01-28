@@ -66,7 +66,7 @@ func Example_pingPong() {
 }
 
 func serverDispatch(server *UDPConn, errChan chan error) {
-	errChan <- server.Serve(1, MessageHandlers{
+	errChan <- server.Serve(1, PatternMatching{
 		"/ping": Method(func(msg Message) error {
 			fmt.Println("Server received ping.")
 			return server.SendTo(msg.Sender, Message{Address: "/pong"})
@@ -83,7 +83,7 @@ func serverDispatch(server *UDPConn, errChan chan error) {
 }
 
 func clientDispatch(client *UDPConn, errChan chan error, pongChan chan struct{}, closeChan chan struct{}) {
-	errChan <- client.Serve(1, MessageHandlers{
+	errChan <- client.Serve(1, PatternMatching{
 		"/pong": Method(func(msg Message) error {
 			fmt.Println("Client received pong.")
 			close(pongChan)

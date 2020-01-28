@@ -31,11 +31,12 @@ type Dispatcher interface {
 	Invoke(msg Message, exactMatch bool) error
 }
 
-// MessageHandlers is a map from OSC address pattern to message handler.
-type MessageHandlers map[string]MessageHandler
+// PatternMatching is a dispatcher that implements OSC 1.0 pattern matching.
+// See http://opensoundcontrol.org/spec-1_0 "OSC Message Dispatching and Pattern Matching"
+type PatternMatching map[string]MessageHandler
 
 // Dispatch invokes an OSC bundle's messages.
-func (h MessageHandlers) Dispatch(b Bundle, exactMatch bool) error {
+func (h PatternMatching) Dispatch(b Bundle, exactMatch bool) error {
 	var (
 		now = time.Now()
 		tt  = b.Timetag.Time()
@@ -48,7 +49,7 @@ func (h MessageHandlers) Dispatch(b Bundle, exactMatch bool) error {
 }
 
 // immediately invokes an OSC bundle immediately.
-func (h MessageHandlers) immediately(b Bundle, exactMatch bool) error {
+func (h PatternMatching) immediately(b Bundle, exactMatch bool) error {
 	for _, p := range b.Packets {
 		errs := []string{}
 		if err := h.invoke(p, exactMatch); err != nil {
@@ -63,7 +64,7 @@ func (h MessageHandlers) immediately(b Bundle, exactMatch bool) error {
 }
 
 // invoke invokes an OSC packet, which could be a message or a bundle of messages.
-func (h MessageHandlers) invoke(p Packet, exactMatch bool) error {
+func (h PatternMatching) invoke(p Packet, exactMatch bool) error {
 	switch x := p.(type) {
 	case Message:
 		return h.Invoke(x, exactMatch)
@@ -75,7 +76,7 @@ func (h MessageHandlers) invoke(p Packet, exactMatch bool) error {
 }
 
 // Invoke invokes an OSC message.
-func (h MessageHandlers) Invoke(msg Message, exactMatch bool) error {
+func (h PatternMatching) Invoke(msg Message, exactMatch bool) error {
 	for address, handler := range h {
 		matched, err := msg.Match(address, exactMatch)
 		if err != nil {
