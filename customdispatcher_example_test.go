@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func Example_customdispatcher() {
+func Example_customDispatcher() {
 	laddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
 	if err != nil {
 		log.Fatal(err)
