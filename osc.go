@@ -137,16 +137,16 @@ func serve(r readSender, numWorkers int, exactMatch bool, dispatcher Dispatcher)
 	}
 	var (
 		errChan = make(chan error)
-		ready   = make(chan Worker, numWorkers)
+		ready   = make(chan worker, numWorkers)
 	)
 	for i := 0; i < numWorkers; i++ {
-		go Worker{
+		go worker{
 			DataChan:   make(chan Incoming),
 			Dispatcher: dispatcher,
 			ErrChan:    errChan,
 			Ready:      ready,
 			ExactMatch: exactMatch,
-		}.Run()
+		}.run()
 	}
 	go workerLoop(r, ready, errChan)
 
@@ -161,7 +161,7 @@ func serve(r readSender, numWorkers int, exactMatch bool, dispatcher Dispatcher)
 	return nil
 }
 
-func workerLoop(r readSender, ready chan Worker, errChan chan error) {
+func workerLoop(r readSender, ready chan worker, errChan chan error) {
 	for {
 		data := make([]byte, bufSize)
 		_, sender, err := r.read(data)

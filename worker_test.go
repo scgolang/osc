@@ -11,9 +11,9 @@ func TestWorkerRun(t *testing.T) {
 	var (
 		data  = make(chan Incoming)
 		errch = make(chan error)
-		ready = make(chan Worker)
+		ready = make(chan worker)
 	)
-	worker := Worker{
+	wrk := worker{
 		DataChan:   data,
 		Dispatcher: errorDispatcher{},
 		ErrChan:    errch,
@@ -23,7 +23,7 @@ func TestWorkerRun(t *testing.T) {
 	defer close(data)
 
 	// Run the worker goroutine.
-	go worker.Run()
+	go wrk.run()
 
 	// Wait for the worker to signal that it is ready.
 	select {

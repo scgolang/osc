@@ -4,17 +4,17 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Worker is a worker who can process OSC messages.
-type Worker struct {
+// worker is a worker who can process OSC messages.
+type worker struct {
 	DataChan   chan Incoming
 	Dispatcher Dispatcher
 	ErrChan    chan error
-	Ready      chan<- Worker
+	Ready      chan<- worker
 	ExactMatch bool
 }
 
-// Run runs the worker.
-func (w Worker) Run() {
+// run runs the worker.
+func (w worker) run() {
 	w.Ready <- w
 
 DataLoop:
