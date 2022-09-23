@@ -1,12 +1,17 @@
 package osc
 
 import (
-	"bytes"
 	"testing"
 	"time"
 
 	"github.com/pkg/errors"
 )
+
+func TestImmediately(t *testing.T) {
+	if !Immediately.Time().IsZero() {
+		t.Fatalf("expected Immediately to convert to the zero time")
+	}
+}
 
 func TestFromTime(t *testing.T) {
 	// Test converting to/from time.Time
@@ -14,33 +19,10 @@ func TestFromTime(t *testing.T) {
 		Input    Timetag
 		Expected time.Time
 	}{
-		{
-			Input:    FromTime(time.Unix(0, 0)),
-			Expected: time.Unix(0, 0),
-		},
+		{Input: FromTime(time.Unix(0, 0)), Expected: time.Unix(0, 0)},
 	} {
 		if expected, got := testcase.Expected, testcase.Input.Time(); !expected.Equal(got) {
 			t.Fatalf("expected %s, got %s", expected, got)
-		}
-	}
-}
-
-func TestTimetagBytes(t *testing.T) {
-	for _, testcase := range []struct {
-		Input    Timetag
-		Expected []byte
-	}{
-		{
-			Input:    Timetag(0),
-			Expected: []byte{0, 0, 0, 0, 0, 0, 0, 0},
-		},
-		{
-			Input:    Timetag(10),
-			Expected: []byte{0, 0, 0, 0, 0, 0, 0, 0x0A},
-		},
-	} {
-		if expected, got := testcase.Expected, testcase.Input.Bytes(); !bytes.Equal(expected, got) {
-			t.Fatalf("expected, %q, got %q", expected, got)
 		}
 	}
 }
@@ -50,7 +32,16 @@ func TestTimetagString(t *testing.T) {
 		Input    Timetag
 		Expected string
 	}{
-		{Input: Timetag(10), Expected: "1900-01-01T00:00:00Z"},
+		// 0s + 0 * 0.233ns
+		{Input: Timetag(0), Expected: "1900-01-01T00:00:00Z"},
+		// "immediately" special value
+		{Input: Timetag(1), Expected: "0001-01-01T00:00:00Z"},
+		// 0s + 2 * 0.233ns
+		{Input: Timetag(2), Expected: "1900-01-01T00:00:00Z"},
+		// 0s + (2^32-1)/(2^32) seconds
+		{Input: Timetag(0xFFFFFFFF), Expected: "1900-01-01T00:00:00Z"},
+		// 1s + 0 * 0.233ns
+		{Input: Timetag(0x100000000), Expected: "1900-01-01T00:00:01Z"},
 	} {
 		if expected, got := testcase.Expected, testcase.Input.String(); expected != got {
 			t.Fatalf("expected, %s, got %s", expected, got)
