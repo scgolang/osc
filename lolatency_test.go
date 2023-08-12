@@ -36,7 +36,7 @@ func BenchmarkUDPSend(b *testing.B) {
 		ch  = make(chan struct{})
 		val = struct{}{}
 	)
-	go srv.Serve(8, osc.Dispatcher{
+	go srv.Serve(8, osc.PatternMatching{
 		"/ping": osc.Method(func(m osc.Message) error {
 			ch <- val
 			return nil
@@ -74,7 +74,7 @@ func BenchmarkUDPSendOneArgument(b *testing.B) {
 		ch  = make(chan struct{})
 		val = struct{}{}
 	)
-	go srv.Serve(1, osc.Dispatcher{
+	go srv.Serve(1, osc.PatternMatching{
 		"/ping": osc.Method(func(m osc.Message) error {
 			if _, err := m.Arguments[0].ReadInt32(); err != nil {
 				return err
@@ -117,7 +117,7 @@ func BenchmarkUnixSend(b *testing.B) {
 		ch  = make(chan struct{})
 		val = struct{}{}
 	)
-	go srv.Serve(8, osc.Dispatcher{
+	go srv.Serve(8, osc.PatternMatching{
 		"/ping": osc.Method(func(m osc.Message) error {
 			ch <- val
 			return nil
@@ -154,7 +154,7 @@ func BenchmarkUDPSendExactMatch(b *testing.B) {
 		ch  = make(chan struct{})
 		val = struct{}{}
 	)
-	go srv.Serve(1, osc.Dispatcher{
+	go srv.Serve(1, osc.PatternMatching{
 		"/ping": osc.Method(func(m osc.Message) error {
 			if _, err := m.Arguments[0].ReadInt32(); err != nil {
 				return err
