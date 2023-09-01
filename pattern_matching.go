@@ -1,6 +1,7 @@
 package osc
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -27,12 +28,12 @@ func (h PatternMatching) Dispatch(b Bundle, exactMatch bool) error {
 // immediately invokes an OSC bundle immediately.
 func (h PatternMatching) immediately(b Bundle, exactMatch bool) error {
 	for _, p := range b.Packets {
-		errs := []string{}
+		errs := []any{}
 		if err := h.invoke(p, exactMatch); err != nil {
-			errs = append(errs, err.Error())
+			errs = append(errs, err)
 		}
 		if len(errs) > 0 {
-			return errors.New(strings.Join(errs, " and "))
+			return fmt.Errorf("failed to invoke osc bundle "+strings.Repeat(": %w", len(errs)), errs...)
 		}
 		return nil
 	}
