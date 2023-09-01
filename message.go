@@ -89,11 +89,11 @@ func (msg Message) Match(address string, exactMatch bool) (bool, error) {
 	if !VerifyParts(address, msg.Address) {
 		return false, nil
 	}
-	exp, err := GetRegex(msg.Address)
+	exp, err := GetRegex(address)
 	if err != nil {
 		return false, err
 	}
-	return exp.MatchString(address), nil
+	return exp.MatchString(msg.Address), nil
 }
 
 // Typetags returns a padded byte slice of the message's type tags.
