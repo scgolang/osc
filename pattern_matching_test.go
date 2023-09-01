@@ -8,7 +8,7 @@ import (
 )
 
 // Test a successful method invocation.
-func TestDispatcherDispatchOK(t *testing.T) {
+func TestPatternMatchingDispatcherDispatchOK(t *testing.T) {
 	c := make(chan struct{})
 	d := PatternMatching{
 		"/bar": Method(func(msg Message) error {
@@ -30,7 +30,7 @@ func TestDispatcherDispatchOK(t *testing.T) {
 }
 
 // Test a method that returns an error.
-func TestDispatcherDispatchError(t *testing.T) {
+func TestPatternMatchingDispatcherDispatchError(t *testing.T) {
 	d := PatternMatching{
 		"/foo": Method(func(msg Message) error {
 			return errors.New("oops")
@@ -48,7 +48,7 @@ func TestDispatcherDispatchError(t *testing.T) {
 	}
 }
 
-func TestDispatcherDispatchNestedBundle(t *testing.T) {
+func TestPatternMatchingDispatcherDispatchNestedBundle(t *testing.T) {
 	c := make(chan struct{})
 	d := PatternMatching{
 		"/foo": Method(func(msg Message) error {
@@ -74,7 +74,7 @@ func TestDispatcherDispatchNestedBundle(t *testing.T) {
 	<-c
 }
 
-func TestDispatcherMiss(t *testing.T) {
+func TestPatternMatchingDispatcherMiss(t *testing.T) {
 	d := PatternMatching{
 		"/foo": Method(func(msg Message) error {
 			return nil
@@ -88,7 +88,7 @@ func TestDispatcherMiss(t *testing.T) {
 	}
 }
 
-func TestDispatcherInvoke(t *testing.T) {
+func TestPatternMatchingDispatcherInvoke(t *testing.T) {
 	d := PatternMatching{
 		"/foo": Method(func(msg Message) error {
 			return errors.New("foo error")
