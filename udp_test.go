@@ -83,7 +83,7 @@ func TestDialUDPContext(t *testing.T) {
 // For clients that are interested in closing the server with an OSC
 // message, a method is automatically added to the provided dispatcher
 // at the "/server/close" address that closes the server.
-func testUDPServer(t *testing.T, dispatcher PatternMatching) (*UDPConn, *UDPConn, chan error) {
+func testUDPServer(t *testing.T, dispatcher PatternMatching) (Conn, Conn, chan error) {
 	laddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)

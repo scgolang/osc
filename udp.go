@@ -26,7 +26,7 @@ type UDPConn struct {
 }
 
 // DialUDP creates a new OSC connection over UDP.
-func DialUDP(network string, laddr, raddr *net.UDPAddr) (*UDPConn, error) {
+func DialUDP(network string, laddr, raddr *net.UDPAddr) (Conn, error) {
 	return DialUDPContext(context.Background(), network, laddr, raddr)
 }
 

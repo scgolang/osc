@@ -27,6 +27,7 @@ type Conn interface {
 	Serve(int, Dispatcher) error
 	Send(Packet) error
 	SendTo(net.Addr, Packet) error
+	SetExactMatch(bool)
 }
 
 var invalidAddressRunes = []rune{'*', '?', ',', '[', ']', '{', '}', '#', ' '}
