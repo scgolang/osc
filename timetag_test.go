@@ -20,6 +20,7 @@ func TestFromTime(t *testing.T) {
 		Expected time.Time
 	}{
 		{Input: FromTime(time.Unix(0, 0)), Expected: time.Unix(0, 0)},
+		{Input: FromTime(time.Time{}), Expected: time.Time{}},
 	} {
 		if expected, got := testcase.Expected, testcase.Input.Time(); !expected.Equal(got) {
 			t.Fatalf("expected %s, got %s", expected, got)
