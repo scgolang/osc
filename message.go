@@ -81,19 +81,19 @@ func (msg Message) Equal(other Packet) bool {
 }
 
 // Match returns true if the address of the OSC Message matches the given address.
-func (msg Message) Match(address string, exactMatch bool) (bool, error) {
+func (msg Message) Match(addressPattern string, exactMatch bool) (bool, error) {
 	if exactMatch {
-		return address == msg.Address, nil
+		return addressPattern == msg.Address, nil
 	}
 	// Verify same number of parts.
-	if !VerifyParts(address, msg.Address) {
+	if !VerifyParts(addressPattern, msg.Address) {
 		return false, nil
 	}
-	exp, err := GetRegex(msg.Address)
+	exp, err := GetRegex(addressPattern)
 	if err != nil {
 		return false, err
 	}
-	return exp.MatchString(address), nil
+	return exp.MatchString(msg.Address), nil
 }
 
 // Typetags returns a padded byte slice of the message's type tags.
