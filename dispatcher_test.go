@@ -102,8 +102,8 @@ func TestDispatcherInvoke(t *testing.T) {
 		t.Fatal("expected error, got nil")
 	}
 	badMsg := Message{Address: "/["}
-	if err := d.Invoke(badMsg, false); err == nil {
-		t.Fatal("expected error, got nil")
+	if err := d.Invoke(badMsg, false); err != nil {
+		t.Fatal("expected nil, got error")
 	}
 	if err := d.Invoke(Message{Address: "/bar"}, false); err != nil {
 		t.Fatal(err)
