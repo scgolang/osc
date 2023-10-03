@@ -12,7 +12,7 @@ func TestToBytes(t *testing.T) {
 	}{
 		{
 			Input:    "",
-			Expected: []byte{},
+			Expected: []byte{0, 0, 0, 0},
 		},
 		{
 			Input:    "a",

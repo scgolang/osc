@@ -44,8 +44,8 @@ type Packet interface {
 // This means that the returned byte slice is padded with null bytes
 // so that it's length is a multiple of 4.
 func ToBytes(s string) []byte {
-	if len(s) == 0 {
-		return []byte{}
+	if s == "" {
+		return []byte{0, 0, 0, 0}
 	}
 	return Pad(append([]byte(s), 0))
 }
